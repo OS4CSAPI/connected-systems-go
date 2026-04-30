@@ -1,0 +1,100 @@
+Issue #7 — live tests on HEAD (commit 4b994212), 2026-04-30
+============================================================
+Endpoint: https://129-80-248-53.sslip.io/csapi-go-head/
+
+Server state: 12 systems registered (numberMatched on unfiltered list).
+
+T1 — `?id=<local-uuid>` against /systems
+----------------------------------------
+GET /systems?id=666ed3fe-bccf-4670-bb85-a0a3c4562772
+
+Result: 1 feature.
+  features[0].id  = 666ed3fe-...
+  numberMatched   = 1
+  numberReturned  = 1
+
+VERDICT: spec local-ID branch works.
+
+T2 — `?id=<URI>` against /systems  (THE KEY TEST)
+-------------------------------------------------
+GET /systems?id=urn:test:issue1:sys:1
+
+Result: 1 feature.
+  features[0].id          = 666ed3fe-...
+  features[0].properties.uid = "urn:test:issue1:sys:1"
+  numberMatched   = 1
+  numberReturned  = 1
+
+VERDICT: **spec URI branch works.** This is the canonical filter that the
+publisher should have used. cs-go correctly translates `?id=<URI>` into the
+SQL `id IN (...) OR unique_identifier IN (...)` clause and returns only the
+matching system.
+
+T3 — `?uid=<URI>` against /systems  (the issue's claim)
+-------------------------------------------------------
+GET /systems?uid=urn:test:issue1:sys:1
+
+Result: ALL 12 features (or first page).
+  numberMatched   = 12
+  numberReturned  = (page size)
+
+VERDICT: `?uid=` is silently ignored. **However**, this is not because the
+spec parameter is missing — it's because `uid` is not the spec parameter
+name. The spec parameter is `id` and it works (T2).
+
+T4 — `?id=<unknown-uri>` against /systems
+-----------------------------------------
+GET /systems?id=urn:does:not:exist
+
+Result: empty collection.
+  features = []
+  numberMatched   = 0
+  numberReturned  = 0
+
+VERDICT: empty-result path is correct (no error, just empty collection),
+matching the issue's stated acceptance criterion "When no resource matches
+the UID, an empty collection is returned (not an error)".
+
+T5 — `?id=<uuid>,<unknown-uri>`  (mixed comma-separated)
+--------------------------------------------------------
+GET /systems?id=666ed3fe-...,urn:does:not:exist
+
+Result: 1 feature (the existing one).
+  numberMatched   = 1
+  numberReturned  = 1
+
+VERDICT: mixed comma-separated works, matching the spec's "list" semantics
+and the issue's stated acceptance criterion "Comma-separated UIDs work:
+?uid=urn:a,urn:b returns both matching resources".
+
+T6 — /datastreams collection
+----------------------------
+Confirmed datastreams list endpoint accepts `?id=` similarly via
+applyFilters (`id IN ? OR unique_identifier IN ?`); not run with a URI here
+because the test datastreams have no `uid` populated, but the same code
+path is exercised on /systems above.
+
+T7 — Unknown parameter sanity check
+-----------------------------------
+GET /systems?foo=bar&limit=2
+
+Result: full collection paged at limit=2; foo=bar silently ignored.
+  numberMatched   = 12
+  numberReturned  = 2
+
+VERDICT: `?foo=bar` is silently ignored. **Identical behavior to `?uid=`**
+in T3. This confirms that the symptom in the issue is not "a missing
+implementation of the `uid` parameter" — it is "Go's `url.Values.Get`
+returns empty for any unknown key, including `uid`". `uid` is unknown
+from the spec's perspective; the spec parameter is `id`.
+
+Summary
+-------
+The spec query parameter that filters resources by URI/UID is **`id`**, and
+it works correctly on cs-go HEAD (T2/T4/T5). There is no `uid` parameter in
+the OGC 23-001 / 23-002 spec; treating `?uid=` as unknown is consistent
+behavior across the API surface (T7).
+
+The publisher's reported workaround (fetch ?limit=1000 and filter
+client-side) is not necessary — replacing `?uid=urn:...` with
+`?id=urn:...` will return the matching resource directly.

@@ -1,0 +1,148 @@
+Issue #7 — static analysis on HEAD (commit 4b994212), 2026-04-30
+================================================================
+
+1. Spec authority — OGC API Connected Systems Part 1 (canonical source)
+   ---------------------------------------------------------------------
+   Parameter definition (api/part1/openapi/parameters/idList.yaml,
+   fetched from opengeospatial/ogcapi-connected-systems master):
+
+     name: id
+     description: |-
+       List of resource local IDs or unique IDs (URI).
+       Only resources that have one of the provided identifiers are selected.
+     in: query
+     required: false
+     schema:
+       $ref: idListSchema.yaml
+     explode: false
+     examples:
+       id:
+         summary: Local IDs
+         value: 'RES_ID1,RES_ID2,RES_ID63'
+       uri:
+         summary: Unique IDs
+         value: 'urn:example:resource:001,urn:example:resource:033'
+
+   The same parameter pattern is referenced from every list-endpoint YAML in
+   Part 1 (paths/systems.yaml, paths/datastreams.yaml, etc.) via
+   `$ref: ../parameters/idList.yaml`.
+
+   OGC 23-002 (Part 2) inlines the same shape — see .tmp-csapi-part2.yaml
+   line 52-77 for /datastreams:
+       - name: id
+         schema:
+           oneOf:
+             - type: array  # Local IDs
+             - type: array  # Unique IDs (format: uri)
+         examples:
+           id:  value: RES_ID1,RES_ID2,RES_ID63
+           uri: value: urn:example:resource:001,urn:example:resource:033
+
+   Grep .tmp-csapi-part2.yaml for `name: uid` as a QUERY parameter:
+       (only matches at lines 355 and 6358, both are `uid:` PROPERTIES on
+        Link/Feature objects — neither is a query parameter)
+
+   CONCLUSION (spec): There is no `uid` query parameter in OGC 23-001 or
+   23-002. The single parameter `id` is defined to accept BOTH local IDs
+   AND URIs (= what publishers and the issue body call "uid").
+
+2. cs-go implementation — base parser
+   -----------------------------------
+   internal/model/query_params/query_params.go (full file 0..100 lines):
+
+     type QueryParams struct {
+         IDs    []string
+         Q      []string
+         Limit  int
+         Offset int
+     }
+
+     func (QueryParams) BuildFromRequest(r *http.Request) *QueryParams {
+         params := &QueryParams{Limit: 10, Offset: 0}
+         if limit := r.URL.Query().Get("limit"); ...
+         if offset := r.URL.Query().Get("offset"); ...
+         if ids := r.URL.Query().Get("id"); ids != "" {
+             params.IDs = strings.Split(ids, ",")
+         }
+         if queries := r.URL.Query().Get("q"); queries != "" {
+             params.Q = strings.Split(queries, ",")
+         }
+         return params
+     }
+
+   Confirmed by grep `internal/`:
+     - Zero hits for `Get("uid")` — base or any per-resource params
+     - Zero hits for any `UIDs []string` field
+     - Every per-resource ParamsType embeds the base via composition and
+       calls *QueryParams{}.BuildFromRequest(r) — none override.
+
+3. cs-go implementation — repository filter
+   -----------------------------------------
+   Every `applyFilters` (system, datastream, control_stream, deployment,
+   procedure, property, sampling_feature, feature) emits the same SQL:
+
+       query.Where("id IN ? OR unique_identifier IN ?", params.IDs, params.IDs)
+
+   Repository-by-repository hits (line numbers):
+     system_repository.go:393
+     datastream_repository.go:164
+     control_stream_repository.go:164
+     deployment_repository.go:122
+     procedure_repository.go:99 (and :146 in a separate dual-lookup helper)
+     property_repository.go:73
+     sampling_feature_repository.go:76
+     feature_repository.go:106
+
+   Only commands_repository (:96 `id IN ?`), observation_repository (:97
+   `id IN ?`), and system_event_repository (:68 `id IN ?`) do NOT include
+   the `OR unique_identifier IN ?` half — but observations/commands/events
+   don't have a `uid` of their own in the spec, so the column doesn't exist
+   on those tables. Spot-check: observation.go and command.go domain models
+   do NOT declare a `UID`/`UniqueIdentifier` field.
+
+   CONCLUSION (impl): cs-go ALREADY implements the spec parameter correctly.
+   `?id=<URI>` matches against the `unique_identifier` column. No code
+   change is needed to make `?id=urn:foo` filter by UID — that already
+   works.
+
+4. Cross-fork
+   -----------
+   `query_params.go` and the per-resource `applyFilters` are unchanged from
+   the parent fork SomethingCreativeStudios/connected-systems-go (git log
+   shows no recent OS4CSAPI-only diffs in those files). Whatever we
+   conclude here applies equally upstream.
+
+5. Why the issue's framing is wrong
+   ---------------------------------
+   - The issue cites "OGC 23-001 §7.3 — Query parameters: Spec defines
+     `uid` as a standard list filter parameter". Direct inspection of
+     opengeospatial/ogcapi-connected-systems part1 OAS (canonical source)
+     shows the parameter name is `id`, not `uid`, and the parameter
+     description explicitly enumerates "Local IDs or Unique IDs (URI)".
+   - Adding a separate `UIDs` field plus per-repo `unique_identifier IN ?`
+     branch (Option A in the issue) would create a redundant code path
+     for a parameter that is already covered by the spec parameter.
+   - Adding `uid` as an alias that maps into `IDs` (Option B in the issue)
+     is functionally a no-op — `?id=urn:...` already works the same way.
+     It is purely a SensorHub-compat convenience alias.
+
+6. SensorHub interop note (the actual root cause of the symptom)
+   --------------------------------------------------------------
+   OSH SensorHub apparently DOES accept `?uid=`. That is a SensorHub
+   non-spec extension (or, more charitably, a pre-23-001 idiom from the
+   SOS 2.0 era). The OSHConnect-Python publisher inherited this idiom and
+   sent `?uid=urn:...` to cs-go, where the parameter is silently ignored
+   (Go's `url.Values.Get` returns "" for unknown keys, same as for any
+   typo such as `?foo=bar`), so the publisher saw the full collection.
+   The publisher's correct fix is `?id=urn:...`, which is one character
+   shorter, spec-compliant, and works on cs-go today (verified live in
+   live-tests-head-2026-04-30.txt).
+
+7. The narrower defect that is actually present
+   ---------------------------------------------
+   Unknown query parameters are silently ignored across the API surface
+   (verified by `?foo=bar` test). For `?uid=` specifically this is a
+   publisher-side discoverability footgun. The same hazard exists for any
+   misspelling of any documented parameter (`?lmiit=10`, `?systemId=x`).
+   This is candidate for a docs/UX follow-up, not a bug — OGC API Common
+   does not mandate strict-unknown-param rejection.
