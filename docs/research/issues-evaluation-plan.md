@@ -42,6 +42,68 @@ a per-issue evaluation record only.
 
 ---
 
+## Authoritative resources
+
+The sibling planning repo `OS4CSAPI/ogc-client-CSAPI_2` (branch `phase-7`) has
+an extensive `docs/research/` tree of pre-digested CSAPI specification material
+and authoritative references. **Spec-related verdicts in our evaluations must
+cite one of these resources or the upstream standard directly.** "I think the
+spec says…" is not acceptable.
+
+### Primary (machine-readable, authoritative)
+
+- **OGC API – Connected Systems Part 1, bundled OpenAPI 3.1** —
+  [`docs/research/standards/ogcapi-connectedsystems-1.bundled.oas31.yaml`](https://github.com/OS4CSAPI/ogc-client-CSAPI_2/blob/phase-7/docs/research/standards/ogcapi-connectedsystems-1.bundled.oas31.yaml)
+  · all `$ref`s resolved · use for endpoint paths, request/response schemas,
+  query parameters, conformance classes for Systems / Deployments / Procedures /
+  SamplingFeatures / Properties / Features.
+- **OGC API – Connected Systems Part 2, bundled OpenAPI 3.1** —
+  [`docs/research/standards/ogcapi-connectedsystems-2.bundled.oas31.yaml`](https://github.com/OS4CSAPI/ogc-client-CSAPI_2/blob/phase-7/docs/research/standards/ogcapi-connectedsystems-2.bundled.oas31.yaml)
+  · all `$ref`s resolved · use for Datastreams / Observations / ControlStreams /
+  Commands / SystemEvents / SystemHistory.
+
+### Pre-digested spec extractions (use these to find the right OpenAPI region)
+
+- [`docs/research/requirements/csapi-part1-requirements.md`](https://github.com/OS4CSAPI/ogc-client-CSAPI_2/blob/phase-7/docs/research/requirements/csapi-part1-requirements.md)
+- [`docs/research/requirements/csapi-part2-requirements.md`](https://github.com/OS4CSAPI/ogc-client-CSAPI_2/blob/phase-7/docs/research/requirements/csapi-part2-requirements.md)
+- [`docs/research/requirements/csapi-crud-operations.md`](https://github.com/OS4CSAPI/ogc-client-CSAPI_2/blob/phase-7/docs/research/requirements/csapi-crud-operations.md)
+  — directly relevant to issues #1, #2, #7, #12.
+- [`docs/research/requirements/csapi-query-parameters.md`](https://github.com/OS4CSAPI/ogc-client-CSAPI_2/blob/phase-7/docs/research/requirements/csapi-query-parameters.md)
+  — directly relevant to issues #7, #8, #9, #11.
+- [`docs/research/requirements/csapi-format-requirements.md`](https://github.com/OS4CSAPI/ogc-client-CSAPI_2/blob/phase-7/docs/research/requirements/csapi-format-requirements.md)
+  — directly relevant to issues #3, #4, #5.
+- [`docs/research/requirements/csapi-datatype-schema-requirements.md`](https://github.com/OS4CSAPI/ogc-client-CSAPI_2/blob/phase-7/docs/research/requirements/csapi-datatype-schema-requirements.md)
+- [`docs/research/requirements/csapi-conformance-capabilities.md`](https://github.com/OS4CSAPI/ogc-client-CSAPI_2/blob/phase-7/docs/research/requirements/csapi-conformance-capabilities.md)
+- [`docs/research/requirements/csapi-gap-analysis.md`](https://github.com/OS4CSAPI/ogc-client-CSAPI_2/blob/phase-7/docs/research/requirements/csapi-gap-analysis.md)
+- [`docs/research/requirements/csapi-oshconnect-python-analysis.md`](https://github.com/OS4CSAPI/ogc-client-CSAPI_2/blob/phase-7/docs/research/requirements/csapi-oshconnect-python-analysis.md)
+  — the consumer that surfaces in many cs-go issue bodies.
+- [`docs/research/requirements/csapi-opensensorhub-analysis.md`](https://github.com/OS4CSAPI/ogc-client-CSAPI_2/blob/phase-7/docs/research/requirements/csapi-opensensorhub-analysis.md)
+
+### Index of external standards
+
+- [`docs/research/references.md`](https://github.com/OS4CSAPI/ogc-client-CSAPI_2/blob/phase-7/docs/research/references.md)
+  — annotated bibliography: OGC 23-001, OGC 23-002, SensorML 3.0, SWE Common 3.0,
+  related OGC APIs, foundational semantic standards.
+
+### How to use
+
+For each issue evaluation:
+
+1. Identify which CSAPI resource(s) the issue concerns (Datastream? Observation?
+   Deployment? query parameters? schema validation?).
+2. Open the relevant pre-digested file above to find the right OpenAPI region.
+3. **Verify against the bundled OpenAPI directly** — quote the schema verbatim
+   in the evaluation record's Evidence block.
+4. If a verdict turns on a claim that is not in the OpenAPIs (e.g. SensorML
+   semantics, SWE Common encoding details), use `references.md` to find the
+   authoritative external standard URL.
+
+**Do not copy these files into the cs-go repo.** They are large and live
+canonically in the planning repo; reference by URL and quote the relevant
+fragment in the evaluation record.
+
+---
+
 ## Evaluation rubric
 
 For each issue we record a verdict on four dimensions, plus an overall
@@ -93,46 +155,80 @@ For each issue:
 
 ### Evaluation record template
 
-Each per-issue file contains:
+Each per-issue file contains the sections below. The structure is adapted from
+the `phase-6/findings-report-template.md` pattern in the sibling planning repo
+and requires explicit Evidence blocks per claim — unsourced reasoning is not
+permitted.
 
 ```markdown
 # Issue #NNN — <title>
 
 - **URL:** https://github.com/OS4CSAPI/connected-systems-go/issues/NNN
+- **State at evaluation:** open|closed
 - **Labels:** ...
-- **Evaluated against cs-go commit:** <SHA>
-- **Evaluator:** <session>
-- **Date:** YYYY-MM-DD
+- **Filed by:** <user>
+- **Filed:** YYYY-MM-DD
+- **Evaluated against cs-go HEAD:** <full-SHA>
+- **Date of evaluation:** YYYY-MM-DD
 
-## 1. Issue body (verbatim)
-...
+## Sources Consulted
 
-## 2. Load-bearing claims
-1. ...
-2. ...
+### Primary (authoritative)
+- [OGC bundled OpenAPI / cs-go file:line / RFC / etc.] — what was found
 
-## 3. Verification
-### 3.1 Code claims
-...
-### 3.2 Spec claims
-...
-### 3.3 Reproduction
-...
+### Supporting
+- [requirements doc / external link / etc.] — what was used
+
+## 1. Issue body — load-bearing claims
+
+Enumerate every factual claim the verdict depends on, in a table. Do not
+paraphrase reasoning; list claims atomically (C1, C2, C3, …) so each can be
+verified independently.
+
+## 2. Verification
+
+For each load-bearing claim, apply the per-claim block:
+
+### 2.X — <Claim header>
+
+**Claim (verbatim or close paraphrase):** ...
+
+**Evidence:**
+
+```
+<verbatim code, schema fragment, or spec quote with file:line or section ref>
+```
+
+**Analysis:** [one paragraph: does the evidence support, refute, or partially
+support the claim? what subtlety matters?]
+
+## 3. Reproduction
+
+What was attempted, what succeeded, what was skipped and why. If skipped,
+record under §6 Open questions.
 
 ## 4. Verdicts
-- Validity: ...
-- Legitimacy: ...
-- Accuracy: ...
-- Completeness: ...
 
-## 5. Reasoning
-...
+| Dimension | Verdict | Rationale (one sentence) |
+|---|---|---|
+| Validity | ... | ... |
+| Legitimacy | ... | ... |
+| Accuracy | ... | ... |
+| Completeness | ... | ... |
+
+## 5. Reasoning summary
+
+2–4 paragraphs synthesising the verdicts. May reference §2 evidence by section
+number.
 
 ## 6. Recommendation
-...
+
+One of the six standard recommendations from the rubric, with concrete edits if
+applicable.
 
 ## 7. Open questions / unknowns
-...
+
+What the evaluation could not resolve, and what would be needed to resolve it.
 ```
 
 ---
@@ -185,3 +281,11 @@ records are the source of truth as evaluations land.
 - **2026-04-30** — Issue #1 evaluated. Verdict: keep with edits. Surfaced a
   partial-fix-without-closure pattern in commit `1562201` and a compile break in
   `generators_datastream.go`. Cross-referenced #12 as sibling.
+- **2026-04-30** — Plan amended: added "Authoritative resources" section
+  pointing at the bundled OGC OpenAPIs and pre-digested requirements docs in the
+  sibling planning repo (`OS4CSAPI/ogc-client-CSAPI_2:phase-7/docs/research`).
+  Replaced flat per-issue template with a per-claim Evidence-block template
+  adapted from `phase-6/findings-report-template.md`. Added mandatory
+  "Sources Consulted" header section. Issue #1 record updated retroactively to
+  match new template and to resolve the OGC 23-002 §9.2 spec question using the
+  bundled Part 2 OpenAPI.
