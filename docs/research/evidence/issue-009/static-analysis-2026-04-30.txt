@@ -1,0 +1,64 @@
+Issue #9 — Static analysis (default limit value)
+Date: 2026-04-30
+
+==============================================================================
+1. AFFECTED CODE — internal/model/query_params/query_params.go
+==============================================================================
+
+  func (QueryParams) BuildFromRequest(r *http.Request) *QueryParams {
+      params := &QueryParams{
+          Limit:  10,           ← hardcoded default
+          Offset: 0,
+      }
+      if limit := r.URL.Query().Get("limit"); limit != "" {
+          if val, err := strconv.Atoi(limit); err == nil {
+              params.Limit = val
+          }
+      }
+      ...
+  }
+
+The static claim in the issue body is FACTUALLY ACCURATE: default is 10.
+
+==============================================================================
+2. LIVE VERIFICATION
+==============================================================================
+
+  $base/systems?limit=1000  → numberMatched=13, features.Count=13
+  GET /systems              → numberMatched=13, features.Count=10  ← default
+  GET /systems?limit=5      → numberMatched=13, features.Count=5    ← override
+
+Confirms hardcoded default of 10. Explicit override works.
+
+==============================================================================
+3. ISSUE'S OWN COMPARATIVE TABLE
+==============================================================================
+
+The issue body provides this table:
+
+  Server      | Default limit
+  ------------+--------------
+  SensorHub   | 100
+  pygeoapi    | 10
+  ldproxy     | 10
+  Go CSAPI    | 10
+
+Two of the three comparison points match cs-go. Only SensorHub deviates.
+The issue's own evidence does NOT support the "unusually low" framing:
+the data shows cs-go matches the OGC server ecosystem majority.
+
+The "unusually low" claim concentrates on SensorHub specifically. This is
+the same SensorHub-as-baseline framing pattern as #5/#6/#7.
+
+==============================================================================
+4. ISSUE'S SELF-DOWNGRADE
+==============================================================================
+
+The issue body explicitly states:
+
+  "Once #7 is fixed, this becomes a lower-priority cosmetic issue."
+
+#7 was evaluated and research-resolved (issue-007.md, commit a23f7c4): the
+publisher does not need ?limit=1000 because the spec parameter is `id` and
+?id=urn:... already filters server-side. The compounding concern that
+elevates #9 above its stated severity is therefore obsolete.

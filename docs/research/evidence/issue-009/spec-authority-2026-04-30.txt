@@ -1,0 +1,103 @@
+Issue #9 — Spec authority on default `limit` value
+Date: 2026-04-30
+
+==============================================================================
+1. CANONICAL CSAPI parameters/limit.yaml
+==============================================================================
+
+Source: opengeospatial/ogcapi-connected-systems/master/api/part1/openapi/
+        parameters/limit.yaml
+
+  name: limit
+  in: query
+  description: |-
+    This parameter limits the number of items that are presented in the
+    response document.
+
+    Only items that are on the first level of the collection in the response
+    document are counted.
+    Nested objects contained within the explicitly requested items shall not
+    be counted.
+  required: false
+  schema:
+    type: integer
+    minimum: 1
+    maximum: 10000
+    default: 10           ← spec default
+  style: form
+  explode: false
+
+NOTE: The CSAPI limit.yaml does NOT contain the "values for minimum, maximum,
+and default are examples and can be changed" note that appears in the parent
+OGC API Features spec (see §2). The CSAPI default value is stated literally.
+
+==============================================================================
+2. PARENT OGC API Features parameters/limit.yaml (for comparison)
+==============================================================================
+
+Source: opengeospatial/ogcapi-features/master/core/openapi/parameters/limit.yaml
+
+  name: limit
+  in: query
+  description: |-
+    The optional limit parameter limits the number of items that are
+    presented in the response document.
+
+    Only items are counted that are on the first level of the collection in
+    the response document.
+    Nested objects contained within the explicitly requested items shall not
+    be counted.
+
+    Minimum = 1. Maximum = 10000. Default = 100.
+
+    Note that the values for minimum, maximum and default are examples and
+    can be changed.
+  required: false
+  schema:
+    type: integer
+    minimum: 1
+    maximum: 10000
+    default: 100          ← parent-spec default
+  style: form
+  explode: false
+
+==============================================================================
+3. SPEC POSITIONS — RECONCILED
+==============================================================================
+
+CSAPI conforms to OGC API Features (declared in
+ogcapi-connectedsystems-1.yaml). Two readings are defensible:
+
+  (a) STRICT — the canonical CSAPI limit.yaml literally says default: 10
+      and does not include the parent-spec's escape note. cs-go is
+      spec-conformant. Raising the default would be a deliberate deviation.
+
+  (b) PERMISSIVE — under the parent spec's own escape clause ("values are
+      examples and can be changed"), implementations are free to pick a
+      different default. cs-go's choice of 10 is permitted; SensorHub's
+      choice of 100 is also permitted. Neither is a defect.
+
+Either way, cs-go is NOT in violation of any spec. There is no spec-
+compliance gap.
+
+The issue frames the default as "unusually low". The canonical CSAPI spec
+explicitly states default: 10, and two of the three comparison servers in
+the issue's own table also use 10 (pygeoapi, ldproxy). The "unusually low"
+characterization is not supported by the spec or the comparison.
+
+==============================================================================
+4. CLASSIFICATION
+==============================================================================
+
+  Defect?              No — cs-go matches the canonical CSAPI default.
+  Spec-conformance?    Yes — both literal (CSAPI default: 10) and via parent
+                       escape clause (any default is permitted).
+  UX preference?       Yes — a higher default would suit clients that don't
+                       implement pagination following. This is a deployment
+                       choice, not a spec choice.
+  Upstream call?       Yes — appropriate to defer to maintainer of
+                       SomethingCreativeStudios/connected-systems-go.
+
+The issue self-classifies as P3-Minor and self-downgrades to "cosmetic"
+once #7 is fixed. #7 was research-resolved (no fix needed); the cosmetic
+classification is what remains.
