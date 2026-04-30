@@ -1,0 +1,192 @@
+
+=========== Setup ΓÇö POST system ===========
+SYS=
+
+=========== Setup ΓÇö POST datastream (string times) ===========
+DS=
+
+=========== T1 ΓÇö POST observation, resultTime = ISO 8601 string (canonical) ===========
+HTTP/2 405 
+access-control-allow-headers: Authorization, Content-Type, Accept
+access-control-allow-methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+access-control-allow-origin: *
+access-control-max-age: 86400
+allow: GET
+allow: PUT
+allow: DELETE
+alt-svc: h3=":443"; ma=2592000
+date: Thu, 30 Apr 2026 20:40:22 GMT
+vary: Origin
+via: 1.1 Caddy
+
+=========== T2 ΓÇö POST observation, resultTime = numeric epoch float (the failing case from issue body) ===========
+HTTP/2 405 
+access-control-allow-headers: Authorization, Content-Type, Accept
+access-control-allow-methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+access-control-allow-origin: *
+access-control-max-age: 86400
+allow: PUT
+allow: DELETE
+allow: GET
+alt-svc: h3=":443"; ma=2592000
+date: Thu, 30 Apr 2026 20:40:22 GMT
+vary: Origin
+via: 1.1 Caddy
+
+=========== T3 ΓÇö POST observation, resultTime = numeric epoch int ===========
+HTTP/2 405 
+access-control-allow-headers: Authorization, Content-Type, Accept
+access-control-allow-methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+access-control-allow-origin: *
+access-control-max-age: 86400
+allow: GET
+allow: PUT
+allow: DELETE
+alt-svc: h3=":443"; ma=2592000
+date: Thu, 30 Apr 2026 20:40:22 GMT
+vary: Origin
+via: 1.1 Caddy
+
+=========== T4 ΓÇö POST observation, resultTime = numeric epoch ms (ECMAScript Date.now() style) ===========
+HTTP/2 405 
+access-control-allow-headers: Authorization, Content-Type, Accept
+access-control-allow-methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+access-control-allow-origin: *
+access-control-max-age: 86400
+allow: PUT
+allow: DELETE
+allow: GET
+alt-svc: h3=":443"; ma=2592000
+date: Thu, 30 Apr 2026 20:40:22 GMT
+vary: Origin
+via: 1.1 Caddy
+
+=========== T5 ΓÇö POST observation, resultTime = string but invalid format (just date) ===========
+HTTP/2 405 
+access-control-allow-headers: Authorization, Content-Type, Accept
+access-control-allow-methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+access-control-allow-origin: *
+access-control-max-age: 86400
+allow: GET
+allow: PUT
+allow: DELETE
+alt-svc: h3=":443"; ma=2592000
+date: Thu, 30 Apr 2026 20:40:22 GMT
+vary: Origin
+via: 1.1 Caddy
+
+=========== T6 ΓÇö POST observation, resultTime = empty string ===========
+HTTP/2 405 
+access-control-allow-headers: Authorization, Content-Type, Accept
+access-control-allow-methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+access-control-allow-origin: *
+access-control-max-age: 86400
+allow: GET
+allow: PUT
+allow: DELETE
+alt-svc: h3=":443"; ma=2592000
+date: Thu, 30 Apr 2026 20:40:22 GMT
+vary: Origin
+via: 1.1 Caddy
+
+=========== T7 ΓÇö POST observation, resultTime = null ===========
+HTTP/2 405 
+access-control-allow-headers: Authorization, Content-Type, Accept
+access-control-allow-methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+access-control-allow-origin: *
+access-control-max-age: 86400
+allow: GET
+allow: PUT
+allow: DELETE
+alt-svc: h3=":443"; ma=2592000
+date: Thu, 30 Apr 2026 20:40:22 GMT
+vary: Origin
+via: 1.1 Caddy
+
+=========== T8 ΓÇö POST observation, missing resultTime entirely ===========
+HTTP/2 405 
+access-control-allow-headers: Authorization, Content-Type, Accept
+access-control-allow-methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+access-control-allow-origin: *
+access-control-max-age: 86400
+allow: GET
+allow: PUT
+allow: DELETE
+alt-svc: h3=":443"; ma=2592000
+date: Thu, 30 Apr 2026 20:40:22 GMT
+vary: Origin
+via: 1.1 Caddy
+
+=========== T9 ΓÇö POST observation, phenomenonTime numeric, resultTime string (verifies phenomenon path too) ===========
+HTTP/2 405 
+access-control-allow-headers: Authorization, Content-Type, Accept
+access-control-allow-methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+access-control-allow-origin: *
+access-control-max-age: 86400
+allow: GET
+allow: PUT
+allow: DELETE
+alt-svc: h3=":443"; ma=2592000
+date: Thu, 30 Apr 2026 20:40:22 GMT
+vary: Origin
+via: 1.1 Caddy
+
+=========== T10 ΓÇö POST observation, RFC3339 with milliseconds (extends the strict format) ===========
+HTTP/2 405 
+access-control-allow-headers: Authorization, Content-Type, Accept
+access-control-allow-methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+access-control-allow-origin: *
+access-control-max-age: 86400
+allow: GET
+allow: PUT
+allow: DELETE
+alt-svc: h3=":443"; ma=2592000
+date: Thu, 30 Apr 2026 20:40:22 GMT
+vary: Origin
+via: 1.1 Caddy
+
+=========== T11 ΓÇö POST observation, RFC3339 with timezone offset ===========
+HTTP/2 405 
+access-control-allow-headers: Authorization, Content-Type, Accept
+access-control-allow-methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+access-control-allow-origin: *
+access-control-max-age: 86400
+allow: GET
+allow: PUT
+allow: DELETE
+alt-svc: h3=":443"; ma=2592000
+date: Thu, 30 Apr 2026 20:40:22 GMT
+vary: Origin
+via: 1.1 Caddy
+
+=========== T12 ΓÇö DATASTREAM creation with NUMERIC time fields (does TimeRange silently swallow?) ===========
+HTTP/2 405 
+access-control-allow-headers: Authorization, Content-Type, Accept
+access-control-allow-methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+access-control-allow-origin: *
+access-control-max-age: 86400
+allow: DELETE
+allow: GET
+allow: PUT
+alt-svc: h3=":443"; ma=2592000
+date: Thu, 30 Apr 2026 20:40:22 GMT
+DS_NUM=
+GET back the datastream ΓÇö what got stored?
+{"items":[{"id":"cf4cd80c-ddc1-4470-815c-292a68463f3e","name":"DS without uid A","description":"first create no uid","system@link":{"href":"systems/666ed3fe-bccf-4670-bb85-a0a3c4562772"},"outputName":"temperature","observedProperties":[{"definition":"http://example.org/prop/temperature","label":"Temperature"}],"resultType":"Measure","live":false,"links":[{"href":"https://129-80-248-53.sslip.io/csapi-go-head/systems/666ed3fe-bccf-4670-bb85-a0a3c4562772","rel":"ogc-rel:systems"},{"href":"https://129-80-248-53.sslip.io/csapi-go-head/datastreams/cf4cd80c-ddc1-4470-815c-292a68463f3e/observations","rel":"ogc-rel:observations"}],"Systems":null},{"id":"e4edced2-8fda-450a-9d70-3f10d93eeefb","name":"DS without uid A","description":"first create no uid","system@link":{"href":"systems/666ed3fe-bccf-4670-bb85-a0a3c4562772"},"outputName":"temperature","observedProperties":[{"definition":"http://example.org/prop/temperature","label":"Temperature"}],"resultType":"Measure","live":false,"links":[{"href":"https://129-80-248-53.sslip.io/csapi-go-head/systems/666ed3fe-bccf-4670-bb85-a0a3c4562772","rel":"ogc-rel:systems"},{"href":"https://129-80-248-53.sslip.io/csapi-go-head/datastreams/e4edced2-8fda-450a-9d70-3f10d93eeefb/observations","rel":"ogc-rel:observations"}],"Systems":null},{"id":"186b7853-786a-44d3-9489-bfe5c4f891e9","name":"DS C with stray uid","system@link":{"href":"systems/666ed3fe-bccf-4670-bb85-a0a3c4562772"},"outputName":"pressure","observedProperties":[{"definition":"http://example.org/prop/pressure","label":"Pressure"}],"resultType":"Measure","live":false,"links":[{"href":"https://129-80-248-53.sslip.io/csapi-go-head/systems/666ed3fe-bccf-4670-bb85-a0a3c4562772","rel":"ogc-rel:systems"},{"href":"https://129-80-248-53.sslip.io/csapi-go-head/datastreams/186b7853-786a-44d3-9489-bfe5c4f891e9/observations","rel":"ogc-rel:observations"}],"Systems":null},{"id":"968fa82e-e4a2-4637-b495-a2d71b094d01","name":"DS without uid A","description":"first create no uid","system@link":{"href":"systems/666ed3fe-bccf-4670-bb85-a0a3c4562772"},"outputName":"temperature","observedProperties":[{"definition":"http://example.org/prop/temperature","label":"Temperature"}],"resultType":"Measure","live":false,"links":[{"href":"https://129-80-248-53.sslip.io/csapi-go-head/systems/666ed3fe-bccf-4670-bb85-a0a3c4562772","rel":"ogc-rel:systems"},{"href":"https://129-80-248-53.sslip.io/csapi-go-head/datastreams/968fa82e-e4a2-4637-b495-a2d71b094d01/observations","rel":"ogc-rel:observations"}],"Systems":null},{"id":"f7fe3362-34e5-4208-b7fb-f0187ae9e6aa","name":"DS without uid A","description":"first create no uid","system@link":{"href":"systems/666ed3fe-bccf-4670-bb85-a0a3c4562772"},"outputName":"temperature","observedProperties":[{"definition":"http://example.org/prop/temperature","label":"Temperature"}],"resultType":"Measure","live":false,"links":[{"href":"https://129-80-248-53.sslip.io/csapi-go-head/systems/666ed3fe-bccf-4670-bb85-a0a3c4562772","rel":"ogc-rel:systems"},{"href":"https://129-80-248-53.sslip.io/csapi-go-head/datastreams/f7fe3362-34e5-4208-b7fb-f0187ae9e6aa/observations","rel":"ogc-rel:observations"}],"Systems":null},{"id":"cd32a665-94f7-46a9-b879-aef7176e2ea7","name":"DS C with stray uid","system@link":{"href":"systems/666ed3fe-bccf-4670-bb85-a0a3c4562772"},"outputName":"pressure","observedProperties":[{"definition":"http://example.org/prop/pressure","label":"Pressure"}],"resultType":"Measure","live":false,"links":[{"href":"https://129-80-248-53.sslip.io/csapi-go-head/systems/666ed3fe-bccf-4670-bb85-a0a3c4562772","rel":"ogc-rel:systems"},{"href":"https://129-80-248-53.sslip.io/csapi-go-head/datastreams/cd32a665-94f7-46a9-b879-aef7176e2ea7/observations","rel":"ogc-rel:observations"}],"Systems":null},{"id":"8fb3e570-64f8-4f04-8ade-89daffe24bb7","name":"DS for issue2","system@link":{"href":"systems/19f95f00-3db6-465b-8e43-e6b10ea43cc4"},"outputName":"temperature","observedProperties":[{"definition":"http://example.org/prop/temp","label":"Temp"}],"resultType":"Measure","live":false,"links":[{"href":"https://129-80-248-53.sslip.io/csapi-go-head/systems/19f95f00-3db6-465b-8e43-e6b10ea43cc4","rel":"ogc-rel:systems"},{"href":"https://129-80-248-53.sslip.io/csapi-go-head/datastreams/8fb3e570-64f8-4f04-8ade-89daffe24bb7/observations","rel":"ogc-rel:observations"}],"Systems":null},{"id":"cf98b0e0-6613-4f4e-befe-6218cdedd765","name":"DS2","system@link":{"href":"systems/8c0d233b-7a10-43e9-ab85-e386a6555b6c"},"outputName":"x","observedProperties":[{"definition":"http://example.org/x","label":"X"}],"resultType":"Measure","live":false,"links":[{"href":"https://129-80-248-53.sslip.io/csapi-go-head/systems/8c0d233b-7a10-43e9-ab85-e386a6555b6c","rel":"ogc-rel:systems"},{"href":"https://129-80-248-53.sslip.io/csapi-go-head/datastreams/cf98b0e0-6613-4f4e-befe-6218cdedd765/observations","rel":"ogc-rel:observations"}],"Systems":null},{"id":"b93d0040-6f69-4874-9d2b-f488b96a9fb3","name":"DS","system@link":{"href":"systems/61ecca09-131a-40a9-8c93-c0b60a21e3cc"},"outputName":"x","observedProperties":[{"definition":"http://example.org/x","label":"X"}],"resultType":"Measure","live":false,"links":[{"href":"https://129-80-248-53.sslip.io/csapi-go-head/systems/61ecca09-131a-40a9-8c93-c0b60a21e3cc","rel":"ogc-rel:systems"},{"href":"https://129-80-248-53.sslip.io/csapi-go-head/datastreams/b93d0040-6f69-4874-9d2b-f488b96a9fb3/observations","rel":"ogc-rel:observations"}],"Systems":null},{"id":"fa9d7cc0-889c-4d33-afa5-2c7d38fdd19c","name":"DSnum","system@link":{"href":"systems/61ecca09-131a-40a9-8c93-c0b60a21e3cc"},"outputName":"x","observedProperties":[{"definition":"http://example.org/x","label":"X"}],"resultType":"Measure","live":false,"links":[{"href":"https://129-80-248-53.sslip.io/csapi-go-head/systems/61ecca09-131a-40a9-8c93-c0b60a21e3cc","rel":"ogc-rel:systems"},{"href":"https://129-80-248-53.sslip.io/csapi-go-head/datastreams/fa9d7cc0-889c-4d33-afa5-2c7d38fdd19c/observations","rel":"ogc-rel:observations"}],"Systems":null}],"links":[{"href":"https://129-80-248-53.sslip.io/csapi-go-head/datastreams/","rel":"self"},{"href":"https://129-80-248-53.sslip.io/csapi-go-head/datastreams/?offset=10","rel":"next"}]}
+
+=========== T13 ΓÇö DATASTREAM creation with STRING time fields in array form ===========
+HTTP/2 405 
+access-control-allow-headers: Authorization, Content-Type, Accept
+access-control-allow-methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+access-control-allow-origin: *
+access-control-max-age: 86400
+allow: GET
+allow: PUT
+allow: DELETE
+alt-svc: h3=":443"; ma=2592000
+date: Thu, 30 Apr 2026 20:40:23 GMT
+
+=========== Server log slice (zap level=error around the time tests) ===========
+[0m[33m[0.707ms] [34;1m[rows:0][0m INSERT INTO "systems" ("id","created_at","updated_at","unique_identifier","name","description","system_type","asset_type","sml_type","valid_time_start","valid_time_end","geometry","parent_system_id","system_kind_id","lang","keywords","identifiers","classifiers","security_constraints","legal_constraints","contacts","documentation","history","type_of","configuration","features_of_interest","inputs","outputs","parameters","modes","attached_to","local_reference_frames","local_time_frames","position","links") VALUES ('7c5df9db-466f-4035-af46-afd8e5397958','2026-04-30 20:40:21.924','2026-04-30 20:40:21.924','urn:test:issue3:sys:1','Time Test','','http://www.w3.org/ns/sosa/Sensor',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'[]','null','null',NULL,'null','[]','null','null',NULL,(NULL),'null','null','null','null',(NULL),NULL,(NULL),(NULL),(NULL),'null')
+
+===END time tests===
