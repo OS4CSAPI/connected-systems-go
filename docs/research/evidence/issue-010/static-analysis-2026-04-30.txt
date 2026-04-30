@@ -1,0 +1,72 @@
+Issue #10 — Static analysis: SensorML `documents` JSON tag mismatch
+Date: 2026-04-30
+
+==============================================================================
+1. INVENTORY OF JSON TAGS — `Documents` field across cs-go
+==============================================================================
+
+  File                                                  | Line | json tag
+  ------------------------------------------------------+------+-----------------
+  internal/model/common_shared/history.go               |   97 | documentation
+  internal/model/domains/deployment.go                  |   34 | documents       *
+  internal/model/domains/deployment.go                  |  112 | documentation
+  internal/model/domains/procedure.go                   |   32 | documentation
+  internal/model/domains/procedure.go                   |  122 | documentation
+  internal/model/domains/system_event.go                |   22 | documentation
+  internal/model/domains/system.go                      |   41 | documentation
+  internal/model/domains/system.go                      |  121 | documentation
+  internal/model/domains/system.go                      |  151 | documentation
+
+  * the only spec-correct tag, but it is the GORM DB struct only.
+    The SML-format output struct for /deployments (line 112) still uses
+    `documentation`, so the deployment write/read API is still broken.
+
+==============================================================================
+2. WHY DATA IS SILENTLY DROPPED
+==============================================================================
+
+Go's encoding/json default behavior:
+  - On Unmarshal: unknown fields are silently ignored (no error returned
+    unless DisallowUnknownFields() is explicitly enabled — cs-go does not
+    enable it).
+  - On Marshal: a field with the omitempty tag and zero value is omitted.
+
+Concrete sequence for the issue's reproducer:
+  (a) Client POSTs SML with property name "documents" (spec-correct).
+  (b) The Go SystemSML struct has tag `json:"documentation,omitempty"` —
+      not `json:"documents,..."`. The "documents" array is unknown to the
+      unmarshaller and silently skipped. Documentation field stays nil.
+  (c) System persists to DB with empty/null documents JSONB column.
+  (d) Later GET serializes Documentation; nil + omitempty → field absent
+      from output entirely.
+
+The defect is not a serializer bug, an output-encoding bug, or a partial
+mapping bug. It is a single-character class of bug — every "Documentation"
+struct field's json tag is the wrong literal string.
+
+==============================================================================
+3. WHY THE CONTROL TEST WORKS
+==============================================================================
+
+If a client sends `documentation` (cs-go's tag spelling, not the spec's
+property name), step (b) above succeeds: the field unmarshals, persists,
+and round-trips. This proves the underlying types, persistence, and
+serialization paths are all functional. The defect is isolated entirely
+to the json struct-tag literal.
+
+==============================================================================
+4. SCOPE — RESOURCES AFFECTED
+==============================================================================
+
+  /systems          — bug confirmed live (T1 vs control below)
+  /deployments      — bug confirmed by static inspection of SML struct
+                      (deployment.go:112 uses `documentation`)
+  /procedures       — bug confirmed by static inspection
+                      (procedure.go:32 + :122 both use `documentation`)
+  /system-events    — bug present in struct tag (system_event.go:22),
+                      severity depends on whether SML format is used here
+  Event.documentation — same misnamed tag in history.go:97; needs spec
+                      verification of whether Event JSON uses `documents`
+
+The publisher's full bootstrap dataset (37 systems) is affected because
+the publisher uses spec-correct property names on POST.

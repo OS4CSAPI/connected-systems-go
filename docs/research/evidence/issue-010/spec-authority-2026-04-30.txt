@@ -1,0 +1,89 @@
+Issue #10 — Spec authority for SensorML `documents` property name
+Date: 2026-04-30
+
+==============================================================================
+1. CANONICAL SOURCE
+==============================================================================
+
+Repository: opengeospatial/ogcapi-connected-systems
+Path:       sensorml/schemas/json/DescribedObject.json
+Branch:     master
+URL:        https://github.com/opengeospatial/ogcapi-connected-systems/blob/
+            master/sensorml/schemas/json/DescribedObject.json
+
+DescribedObject is the abstract base of every SensorML JSON resource
+including AbstractProcess → AbstractPhysicalProcess → PhysicalSystem
+(verified via PhysicalSystem.json $ref chain).
+
+==============================================================================
+2. EXACT SCHEMA EXTRACT
+==============================================================================
+
+  "documents": {
+    "description": "Additional documentation about the asset",
+    "type": "array",
+    "items": {
+      "$ref": "Document.json"
+    }
+  }
+
+The property name is literally `documents` (lowercase, plural). The schema
+contains no alias, no oneOf with `documentation`, and the parent schemas
+(AbstractProcess.json, PhysicalSystem.json) do not redefine or rename it.
+
+==============================================================================
+3. CANONICAL EXAMPLES
+==============================================================================
+
+a) sensorml/schemas/json/examples/weather_station_system.json (the
+   reference PhysicalSystem example) contains:
+
+     "documents": [
+       { "role": "http://dbpedia.org/resource/Web_page", ... },
+       { "role": "http://dbpedia.org/resource/Datasheet", ... },
+       { "role": "http://dbpedia.org/resource/Photograph", ... }
+     ]
+
+b) sensorml/schemas/json/examples/spec/documents.json — a dedicated
+   per-property example file — uses the property name `documents`:
+
+     "documents": [
+       { "role": "...", "name": "Product Web Site", "link": {...} },
+       ...
+     ]
+
+Both examples confirm the property name as `documents`.
+
+==============================================================================
+4. CSAPI BINDING
+==============================================================================
+
+The CSAPI standard (Part 1 — Feature Resources, Annex requirements_class_
+sensorml_encoding) requires SensorML JSON encoding for system/procedure/
+deployment SensorML media types. The encoding schemas are the very files
+above. There is no CSAPI-level rename or alias for the `documents`
+property.
+
+==============================================================================
+5. XML PROVENANCE NOTE (HOW THE BUG WAS LIKELY INTRODUCED)
+==============================================================================
+
+In SensorML's older XML encoding, the corresponding element is
+`<sml:documentation>` containing a `<DocumentList>`. When porting to
+JSON encoding the SensorML SWG renamed the property to `documents` to
+match the array-of-documents pattern used elsewhere in the schema (see
+also: `contacts`, `identifiers`, `classifiers` — all plural arrays).
+
+A naive XML-to-JSON port that keeps the XML element name `documentation`
+as the JSON property would mis-implement the JSON encoding. The cs-go
+`json:"documentation,omitempty"` tag fits this profile exactly.
+
+==============================================================================
+6. CONCLUSION
+==============================================================================
+
+The OGC SensorML JSON encoding property name is unambiguously `documents`.
+cs-go's `json:"documentation,omitempty"` tag is a non-conformance with
+the canonical schema. Any spec-correct client that POSTs/PUTs SensorML
+to cs-go will have its `documents` array silently dropped on ingest
+(per Go's default unknown-field handling).

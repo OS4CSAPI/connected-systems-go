@@ -1,0 +1,114 @@
+Issue #10 — Live verification on HEAD
+Date:     2026-04-30
+Endpoint: https://129-80-248-53.sslip.io/csapi-go-head/
+
+==============================================================================
+T1 — POST with spec-correct `documents` property
+==============================================================================
+
+REQUEST:
+  POST /systems
+  Content-Type: application/sml+json
+
+  {
+    "type": "PhysicalSystem",
+    "uniqueId": "urn:test:issue10:docs:20260430183834",
+    "label": "Issue10 docs roundtrip test",
+    "definition": "http://www.w3.org/ns/sosa/Sensor",
+    "documents": [
+      {
+        "role": "http://dbpedia.org/resource/Photograph",
+        "name": "Test Photo",
+        "link": { "href": "https://example.com/photo.jpg",
+                  "type": "image/jpeg" }
+      },
+      {
+        "role": "http://www.opengis.net/def/role/OGC/0/specificationDocument",
+        "name": "Spec Sheet",
+        "link": { "href": "https://example.com/spec.pdf",
+                  "type": "application/pdf" }
+      }
+    ]
+  }
+
+RESPONSE:
+  HTTP/1.1 201 Created
+  Location: .../systems/bb43dde8-7b10-4f9c-ac72-933bb3e1e2e9
+  Content-Length: 0
+
+  -- 201 implies success; no error returned to client --
+
+ROUNDTRIP:
+  GET /systems/bb43dde8-7b10-4f9c-ac72-933bb3e1e2e9
+  Accept: application/sml+json
+  → HTTP 200
+  → {"id":"bb43dde8-7b10-4f9c-ac72-933bb3e1e2e9",
+     "type":"PhysicalSystem",
+     "label":"Issue10 docs roundtrip test",
+     "uniqueId":"urn:test:issue10:docs:20260430183834",
+     "definition":"http://www.w3.org/ns/sosa/Sensor"}
+
+  ↑ NO `documents` field. Two-document array silently dropped. ↑
+
+==============================================================================
+CONTROL — POST with cs-go's wrong tag spelling `documentation`
+==============================================================================
+
+REQUEST:
+  POST /systems
+  Content-Type: application/sml+json
+
+  {
+    "type": "PhysicalSystem",
+    "uniqueId": "urn:test:issue10:doc:20260430183902",
+    "label": "Issue10 documentation tag control",
+    "definition": "http://www.w3.org/ns/sosa/Sensor",
+    "documentation": [
+      {
+        "role": "http://dbpedia.org/resource/Photograph",
+        "name": "Control Photo",
+        "link": { "href": "https://example.com/control.jpg",
+                  "type": "image/jpeg" }
+      }
+    ]
+  }
+
+RESPONSE:
+  HTTP/1.1 201 Created
+  Location: .../systems/63035059-a59f-4e6c-afb6-508d3acf3a50
+
+ROUNDTRIP:
+  GET /systems/63035059-a59f-4e6c-afb6-508d3acf3a50
+  Accept: application/sml+json
+  → HTTP 200
+  → {"id":"63035059-a59f-4e6c-afb6-508d3acf3a50",
+     "type":"PhysicalSystem",
+     "label":"Issue10 documentation tag control",
+     "uniqueId":"urn:test:issue10:doc:20260430183902",
+     "documentation":[
+        {"role":"http://dbpedia.org/resource/Photograph",
+         "name":"Control Photo",
+         "link":{"href":"https://example.com/control.jpg",
+                 "type":"image/jpeg"}}],
+     "definition":"http://www.w3.org/ns/sosa/Sensor"}
+
+  ↑ The non-spec property name `documentation` IS preserved.
+    This isolates the defect to the JSON struct-tag literal. ↑
+
+==============================================================================
+DIAGNOSIS
+==============================================================================
+
+  Spec-correct property name: documents       → DROPPED
+  cs-go's struct-tag spelling: documentation  → PRESERVED
+
+Underlying types, JSONB persistence, marshal/unmarshal pipeline, and
+output emission all work correctly. The bug is exactly: the json tag
+literal in the Go struct does not match the spec property name. Any
+client that conforms to the SensorML JSON encoding spec will lose its
+`documents` data without warning.
+
+The HTTP 201 returned for the spec-correct POST is misleading: the server
+indicates success while having silently discarded part of the payload.
+Silent partial-data loss with a 2xx status is the worst-class flavor of
+this kind of bug because clients have no signal to retry, log, or alert.
