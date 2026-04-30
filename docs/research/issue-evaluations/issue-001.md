@@ -7,7 +7,7 @@
 - **Filed:** 2026-04-17
 - **Evaluated against cs-go HEAD:** `1562201a44aa0dbd903ce44a1af40c7f662b2d4a` ("update datastreams", 2026-04-20)
 - **Date of evaluation:** 2026-04-30
-- **Evaluation methodology:** static code review against HEAD and pre-issue commit `dacae7b`; OGC Part 2 OpenAPI consultation; local `go build` verification. No live HTTP reproduction against a running cs-go instance.
+- **Evaluation methodology:** static code review against HEAD and pre-issue commit `dacae7b`; OGC Part 2 OpenAPI consultation; local `go build` verification; parent-fork cross-check against `SomethingCreativeStudios/connected-systems-go`; live-deployment probe at `https://129-80-248-53.sslip.io/csapi-go/`. No authenticated POST attempted against the deployment.
 
 ---
 
@@ -20,12 +20,16 @@
 - [`internal/model/generators/generators_datastream.go`](../../../internal/model/generators/generators_datastream.go) at HEAD — generator that still references `CommonSSN`.
 - [`internal/repository/repository.go`](../../../internal/repository/repository.go) at HEAD — `AutoMigrate` call list.
 - `git diff dacae7b..1562201 -- internal/model/domains/datastream.go` — shows the structural change after the issue was filed.
+- **Parent fork** `SomethingCreativeStudios/connected-systems-go` at HEAD `1562201` (verified via GitHub API 2026-04-30) — same broken `generators_datastream.go`, confirming the defect is in the maintainer's canonical tree, not an OS4CSAPI fork artefact.
+- **Live deployment** at `https://129-80-248-53.sslip.io/csapi-go/` — GET `/datastreams` response observed 2026-04-30.
 - **OGC API – Connected Systems Part 2, bundled OpenAPI 3.1**, `dataStream` schema: [docs/research/standards/ogcapi-connectedsystems-2.bundled.oas31.yaml](https://github.com/OS4CSAPI/ogc-client-CSAPI_2/blob/phase-7/docs/research/standards/ogcapi-connectedsystems-2.bundled.oas31.yaml) lines 266–340 (anchor `&ref_53`) and 1728–1734 (anchor `&ref_54`).
+- **OGC API – Connected Systems Part 1, bundled OpenAPI 3.1** — cross-checked for `Datastream` references; spec-mandated fields live in Part 2.
 - Local `go build ./...` against HEAD — produced compile error.
 
 ### Supporting
 
 - Issue #12 in this repo — corroborates that `unique_identifier` column / index still exists at runtime in deployments.
+- [`docs/research/references.md`](https://github.com/OS4CSAPI/ogc-client-CSAPI_2/blob/phase-7/docs/research/references.md) — confirms the two bundled OAS31 YAMLs are the authoritative machine-readable sources for CSAPI; SensorML 3.0 and SWE Common 3.0 JSON Schemas at `schemas.opengis.net` govern SensorML resources and SWE result encoding, not the `dataStream` resource's required-fields list.
 
 ---
 
@@ -150,7 +154,7 @@ update datastreams
 
 **Analysis:** Commit `1562201` (2026-04-20, three days after the issue was filed) removed `CommonSSN` from `Datastream` and replaced it with explicit `Name` and `Description` fields. This silently eliminates the `uid` field from the struct — but the commit message says only "update datastreams", does not reference the issue, and the issue was not closed. **None of the issue's three proposed options were chosen; a fourth path ("remove the field entirely") was taken without discussion.** Notably, "remove the field" aligns with §2.3's spec finding — the field was not OGC-mandated — so the direction of this change is defensible even though the process around it was not.
 
-### 2.5 — The "fix" leaves the build broken (active defect)
+### 2.5 — The "fix" leaves the build broken (active defect; verified in parent fork too)
 
 **Evidence ([generators_datastream.go](../../../internal/model/generators/generators_datastream.go) lines 175–181 at HEAD):**
 
@@ -174,7 +178,21 @@ internal\model\generators\generators_datastream.go:177:3: unknown field CommonSS
 EXIT=1
 ```
 
-**Analysis:** The current `main` branch does not compile. `generators_datastream.go` still constructs `domains.Datastream` with a `CommonSSN: domains.CommonSSN{...}` literal that is no longer valid against the current `Datastream` definition. The file has no build tag and is imported by `e2e/observations_test.go:15`. This is an active defect introduced by `1562201` and is independent of the original issue. CI signal on this repo is therefore not what it appears.
+**Evidence (parent fork `SomethingCreativeStudios/connected-systems-go` HEAD `1562201`, fetched via GitHub API 2026-04-30, lines around 175):**
+
+```go
+return domains.Datastream{
+        Base: domains.Base{ID: id},
+        CommonSSN: domains.CommonSSN{
+                UniqueIdentifier: domains.UniqueID(fmt.Sprintf("urn:uuid:%s", id)),
+                Name:             "Datastream " + f.Lorem().Word(),
+                Description:      f.Lorem().Sentence(6),
+        },
+        ...
+}
+```
+
+**Analysis:** The compile break is not an artefact of the OS4CSAPI fork or local clone state — the parent fork (`SomethingCreativeStudios/connected-systems-go`) at the same HEAD `1562201` ships identical broken code. `generators_datastream.go` constructs `domains.Datastream` with a `CommonSSN: domains.CommonSSN{...}` literal that is no longer valid against the current `Datastream` definition. The file has no build tag and is imported by `e2e/observations_test.go:15`. Both forks' `main` branches do not compile. CI signal on either repository is therefore not what it appears.
 
 ### 2.6 — DB column / unique-index drift (active defect)
 
@@ -205,13 +223,50 @@ func AutoMigrate(db *gorm.DB) error {
 - **Fresh DB initialized post-`1562201`:** No `unique_identifier` column added (struct has no field). The original C1/C2/C3 bug is gone, but `uid` is silently absent from the API surface.
 - **DB initialized pre-`1562201`:** Column persists with `uniqueIndex`. Inserts from current code do not populate it, so behavior depends on the column's NOT NULL / DEFAULT constraints, which I did not verify against a live DB.
 
+### 2.7 — Live deployment is running pre-`1562201` code (corroborates partial-fix finding)
+
+**Evidence (GET `https://129-80-248-53.sslip.io/csapi-go/datastreams`, 2026-04-30, first record):**
+
+```json
+{
+  "id":"120b633b-aff8-4710-810f-ce4b25012676",
+  "uid":"urn:os4csapi:datastream:usgs-eq-feed:earthquakeEvent:v1",
+  "name":"Earthquake Events",
+  "description":"Normalized earthquake events from the USGS GeoJSON summary feed…",
+  "system@link":{"href":"systems/8eee605f-0751-4c50-ac97-46d74ab0309d"},
+  "outputName":"earthquakeEvent",
+  "schema":{…},
+  "links":[…],
+  "Systems":null
+}
+```
+
+**Evidence (current `Datastream` struct at HEAD `1562201`, [datastream.go](../../../internal/model/domains/datastream.go) lines 14–18):**
+
+```go
+type Datastream struct {
+    Base
+    Name        string `gorm:"type:varchar(255);not null" json:"name"`
+    Description string `gorm:"type:text" json:"description,omitempty"`
+    ...
+}
+```
+
+**Analysis:** The live deployment serves datastreams with a populated `uid` field. The current struct at HEAD has **no `uid` field** — there is no JSON tag that could produce one in the response. The deployed binary therefore cannot have been built from `1562201`; it is from an earlier commit (most plausibly `dacae7b` "Bug fixes and clean up" or earlier, where `Datastream` still embedded `CommonSSN`). This is direct external evidence that:
+
+1. Whatever process built `1562201` did not roll forward to the deployment, so the partial-fix hasn't reached production.
+2. The original bug C1–C3 (empty-string `uid` collision) **is still reachable on the live deployment** if a client POSTs a datastream without `uid`. Worth a follow-up reproduction once authentication is established — but the existing populated `uid` values shown above are well-formed URNs, suggesting the publishers are correctly setting `uid` and the empty-string code path may simply not have been exercised yet in this deployment.
+3. The deployment's database almost certainly has the `unique_identifier` column with its unique index (per §2.6, scenario "pre-`1562201`"), so when the next deploy ships `1562201` the column will remain in the DB even though the API stops emitting it — the worst of both worlds, until a migration is added.
+
 ---
 
 ## 3. Reproduction
 
 **Static reproduction:** Confirmed via `go build ./...` (§2.5) — current `main` does not compile.
 
-**Live HTTP reproduction:** Not attempted. Running cs-go locally requires PostGIS plus the Postgres extensions; standing it up exceeds the scope of a per-issue evaluation. The test instance at `https://129-80-248-53.sslip.io/csapi-go` was not exercised because (a) its commit and DB-init state are unknown, and (b) the original behavioral bug is no longer reproducible against post-`1562201` code regardless.
+**Cross-fork verification:** Parent fork `SomethingCreativeStudios/connected-systems-go` HEAD `1562201` carries the identical broken file. Compile break is upstream, not on our end (§2.5).
+
+**Live deployment probe:** GET `/` and GET `/datastreams` against `https://129-80-248-53.sslip.io/csapi-go/` succeeded (HTTP 200). Response confirms the deployed build is pre-`1562201` (§2.7). A direct reproduction of the original C1–C3 empty-string collision was not attempted because (a) it requires authenticated POST against the deployment which exceeds passive evaluation scope, and (b) the deployed code path predates the fix attempt anyway, so a successful reproduction would only re-confirm what §2.1 already establishes.
 
 ---
 
@@ -254,6 +309,7 @@ Do **not** silently close as fixed: the partial-fix state is real and visible (b
 ## 7. Open questions / unknowns
 
 1. **Author intent for `1562201`.** Was it intended as a fix for this issue? The commit message does not say. Asking the author would resolve this.
-2. **Live DB schemas.** Does the cs-go test deployment at `129-80-248-53.sslip.io` have the `unique_identifier` column? If yes, the bug as originally described is still active there. Resolving this requires DB introspection or a DDL-aware status endpoint.
-3. **`?uid=` query parameter (issue #7).** With no `uid` field on Datastream at all, `?uid=` filtering against datastreams becomes structurally impossible. The link between #1's resolution path and #7's existence may be tighter than either issue captures. Defer to issue #7's evaluation.
-4. **Migration plan.** If "remove `uid`" is the chosen direction, what migration ships with the change to drop the column and index from existing databases? Not currently in any commit on `main`.
+2. **Live DB schemas.** Per §2.7 the deployed binary is pre-`1562201`, so the `unique_identifier` column almost certainly exists in that DB. Direct DDL introspection (e.g. via a status endpoint or DB access) would confirm exact column NULL/UNIQUE state and whether the live empty-string collision is still reachable.
+3. **`?uid=` query parameter (issue #7).** With no `uid` field on Datastream at all in the *code* but `uid` still emitted by the *deployed* API, `?uid=` filtering may behave inconsistently across deployments depending on which build is running. Defer to issue #7's evaluation.
+4. **Migration plan.** If "remove `uid`" is the chosen direction, what migration ships with the change to drop the column and index from existing databases? Not currently in any commit on `main`, in either fork.
+5. **Deployment build provenance.** Which exact commit produced the binary running at `129-80-248-53.sslip.io`? The response shape rules out `1562201`; it is likely `dacae7b` or earlier but a commit-tagged build artefact or a `/about` endpoint would make this verifiable.

@@ -289,3 +289,4 @@ records are the source of truth as evaluations land.
   "Sources Consulted" header section. Issue #1 record updated retroactively to
   match new template and to resolve the OGC 23-002 §9.2 spec question using the
   bundled Part 2 OpenAPI.
+- **2026-04-30** — Issue #1 record strengthened: cross-fork verification confirms compile break is in the maintainer's canonical `SomethingCreativeStudios/connected-systems-go` HEAD too (not an OS4CSAPI-fork artefact). Live deployment probe at `https://129-80-248-53.sslip.io/csapi-go/` shows the deployed binary is pre-`1562201` (response includes populated `uid` field that current struct cannot produce). references.md cross-checked: only Part 1 + Part 2 bundled OAS31 are authoritative for CSAPI resource schemas; SensorML/SWE Common JSON Schemas govern other layers.
