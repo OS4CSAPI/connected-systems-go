@@ -37,11 +37,11 @@ We drop:
 
 ## Index
 
-| File | Title (short) | Severity | Discovered during |
-|---|---|---|---|
-| [`stray-uid-silently-dropped.md`](./stray-uid-silently-dropped.md) | `POST /systems/{id}/datastreams` silently drops stray top-level `uid` field | P2-Important | issue #1 evaluation §2.8 T6 |
-| [`api-endpoint-is-stub.md`](./api-endpoint-is-stub.md) | `GET /api` returns 86-byte stub with no paths or schemas | P2-Important | issue #1 evaluation §2.8 T2 |
-| [`systems-field-leaks-into-json.md`](./systems-field-leaks-into-json.md) | Capital-`S` `Systems` GORM relationship field leaks into every datastream JSON response | P3-Minor | issue #1 evaluation §2.8 T7 |
+| File | Issue | Title (short) | Severity | Discovered during |
+|---|---|---|---|---|
+| [`stray-uid-silently-dropped.md`](./stray-uid-silently-dropped.md) | [#13](https://github.com/OS4CSAPI/connected-systems-go/issues/13) | `POST /systems/{id}/datastreams` silently drops stray top-level `uid` field | P2-Important | issue #1 evaluation §2.8 T6 |
+| [`api-endpoint-is-stub.md`](./api-endpoint-is-stub.md) | [#14](https://github.com/OS4CSAPI/connected-systems-go/issues/14) | `GET /api` returns 86-byte stub with no paths or schemas | P2-Important | issue #1 evaluation §2.8 T2 |
+| [`systems-field-leaks-into-json.md`](./systems-field-leaks-into-json.md) | [#15](https://github.com/OS4CSAPI/connected-systems-go/issues/15) | Capital-`S` `Systems` GORM relationship field leaks into every datastream JSON response | P3-Minor | issue #1 evaluation §2.8 T7 |
 
 ## Filing workflow
 

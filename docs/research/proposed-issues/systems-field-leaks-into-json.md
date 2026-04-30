@@ -1,8 +1,6 @@
 # Capital-`S` `Systems` GORM relationship field leaks into every datastream JSON response
 
-> **Filing status:** draft pending submission. Drafted 2026-04-30 from issue #1
-> evaluation §2.8 T7. Replace this banner with `Filed as #N — <url>` once the
-> GitHub issue is created.
+> **Filing status:** Filed as [#15](https://github.com/OS4CSAPI/connected-systems-go/issues/15) on 2026-04-30. Drafted from issue #1 evaluation §2.8 T7.
 
 | Field | Value |
 |---|---|

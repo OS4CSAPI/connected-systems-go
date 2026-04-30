@@ -1,8 +1,6 @@
 # `GET /api` returns 86-byte stub with no paths or schemas
 
-> **Filing status:** draft pending submission. Drafted 2026-04-30 from issue #1
-> evaluation §2.8 T2. Replace this banner with `Filed as #N — <url>` once the
-> GitHub issue is created.
+> **Filing status:** Filed as [#14](https://github.com/OS4CSAPI/connected-systems-go/issues/14) on 2026-04-30. Drafted from issue #1 evaluation §2.8 T2.
 
 | Field | Value |
 |---|---|

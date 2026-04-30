@@ -1,8 +1,6 @@
 # `POST /systems/{id}/datastreams` silently drops stray top-level `uid` field
 
-> **Filing status:** draft pending submission. Drafted 2026-04-30 from issue #1
-> evaluation §2.8 T6. Replace this banner with `Filed as #N — <url>` once the
-> GitHub issue is created.
+> **Filing status:** Filed as [#13](https://github.com/OS4CSAPI/connected-systems-go/issues/13) on 2026-04-30. Drafted from issue #1 evaluation §2.8 T6.
 
 | Field | Value |
 |---|---|
