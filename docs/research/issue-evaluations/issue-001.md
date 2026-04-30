@@ -154,7 +154,7 @@ update datastreams
 
 **Analysis:** Commit `1562201` (2026-04-20, three days after the issue was filed) removed `CommonSSN` from `Datastream` and replaced it with explicit `Name` and `Description` fields. This silently eliminates the `uid` field from the struct — but the commit message says only "update datastreams", does not reference the issue, and the issue was not closed. **None of the issue's three proposed options were chosen; a fourth path ("remove the field entirely") was taken without discussion.** Notably, "remove the field" aligns with §2.3's spec finding — the field was not OGC-mandated — so the direction of this change is defensible even though the process around it was not.
 
-### 2.5 — The "fix" leaves the build broken (active defect; verified in parent fork too)
+### 2.5 — The "fix" leaves the test-fixtures package broken (active defect, scope: tests only)
 
 **Evidence ([generators_datastream.go](../../../internal/model/generators/generators_datastream.go) lines 175–181 at HEAD):**
 
@@ -170,11 +170,19 @@ return domains.Datastream{
 }
 ```
 
-**Evidence (`go build ./...` at HEAD `1562201`):**
+**Evidence (build matrix at HEAD `1562201`, run 2026-04-30):**
 
 ```
+$ go build ./cmd/server      # deployable server binary
+EXIT=0                       # builds cleanly
+
+$ go build ./...             # whole module
 # github.com/yourusername/connected-systems-go/internal/model/generators
 internal\model\generators\generators_datastream.go:177:3: unknown field CommonSSN in struct literal of type domains.Datastream
+EXIT=1
+
+$ go test -count=0 ./...     # compile-only test pass
+# (same error)
 EXIT=1
 ```
 
@@ -192,7 +200,20 @@ return domains.Datastream{
 }
 ```
 
-**Analysis:** The compile break is not an artefact of the OS4CSAPI fork or local clone state — the parent fork (`SomethingCreativeStudios/connected-systems-go`) at the same HEAD `1562201` ships identical broken code. `generators_datastream.go` constructs `domains.Datastream` with a `CommonSSN: domains.CommonSSN{...}` literal that is no longer valid against the current `Datastream` definition. The file has no build tag and is imported by `e2e/observations_test.go:15`. Both forks' `main` branches do not compile. CI signal on either repository is therefore not what it appears.
+**Evidence (use-site for the broken package; `package generators` is imported only from `_test.go` files):**
+
+```
+$ Get-ChildItem -Recurse -Filter *.go | Select-String 'model/generators' | Where-Object { $_.Path -notmatch '_test\.go$' }
+# (no output — no non-test importer)
+```
+
+**Analysis:** The defect is real but narrower than "the project doesn't build":
+
+- **Deployable artefact (`./cmd/server`) builds cleanly.** Anyone running CI as `go build ./cmd/server` to produce the release binary sees no break. This is consistent with a working production deployment.
+- **Module-wide build (`go build ./...`) fails** because `internal/model/generators/` constructs `domains.Datastream{ CommonSSN: ... }` against a struct that no longer has that embedded field after `1562201`. That package is a test-fixture / fake-data helper used only by `_test.go` files (no non-test importer).
+- **`go test ./...` consequently fails to compile** at HEAD on both OS4CSAPI and the maintainer's parent fork (verified above), so the issue is upstream and not an OS4CSAPI-fork artefact.
+
+The practical impact: production deployments are unaffected; the test suite is unrunnable until the fakes are updated. CI that gates on `go test ./...` would catch this; CI that only builds `./cmd/server` would not.
 
 ### 2.6 — DB column / unique-index drift (active defect)
 
@@ -262,7 +283,7 @@ type Datastream struct {
 
 ## 3. Reproduction
 
-**Static reproduction:** Confirmed via `go build ./...` (§2.5) — current `main` does not compile.
+**Static reproduction:** Confirmed via build matrix (§2.5): `go build ./cmd/server` succeeds (EXIT=0); `go build ./...` and `go test -count=0 ./...` fail with the `CommonSSN` error in `internal/model/generators/`. The deployable artefact is unaffected; the test fixtures package is broken.
 
 **Cross-fork verification:** Parent fork `SomethingCreativeStudios/connected-systems-go` HEAD `1562201` carries the identical broken file. Compile break is upstream, not on our end (§2.5).
 
@@ -274,7 +295,7 @@ type Datastream struct {
 
 | Dimension | Verdict | Rationale (one sentence) |
 |---|---|---|
-| Validity | `partially-confirmed` | Original bug logically confirmed at filing time; not directly reproducible at HEAD because field was removed; runtime situation unresolved due to DB drift. |
+| Validity | `partially-confirmed` | Original bug logically confirmed at filing time; not directly reproducible at HEAD because field was removed; runtime situation unresolved due to DB drift, but live deployment still runs pre-fix code so original symptom likely still reachable in production. |
 | Legitimacy | `defect` | The pre-fix combination of `uniqueIndex` + no `omitempty` + no auto-generation is internally inconsistent independent of any spec opinion. |
 | Accuracy | `accurate-but-stale` | Every cited C1–C4 claim verifies against pre-fix code. C5 (implicit spec mandate) is refuted by the OGC OpenAPI. The issue body is now stale because of the silent partial fix. |
 | Completeness | `complete` | All standard sections present; could not have anticipated `1562201`. |
@@ -287,9 +308,9 @@ type Datastream struct {
 
 The issue is well-written and accurately described a real defect at the time it was filed (§2.1). However, three days later, commit `1562201` made a silent structural change that eliminates the immediate symptom by removing the field entirely (§2.4) — a path none of the issue's three proposed options recommended. That change is **directionally defensible** because §2.3 establishes that OGC 23-002 does not mandate a `uid` on Datastream in the first place (refuting load-bearing claim C5).
 
-The current state is, however, worse than either fully fixing or fully reverting: (a) the build is broken (§2.5), (b) deployed databases retain the column and unique index (§2.6), (c) issue #12 exists separately and presupposes the column is still present, and (d) the issue tracker has no record of this trajectory because the commit message did not reference the issue and the issue was not closed.
+The current state has loose ends, though smaller than first appearances suggested: (a) the **test-fixtures package** doesn't compile (§2.5) — the deployable server binary is fine, but `go test ./...` is broken on both forks; (b) deployed databases retain the column and unique index (§2.6); (c) issue #12 exists separately and presupposes the column is still present; (d) the live deployment is still running pre-`1562201` code (§2.7), so the original empty-string collision is likely still reachable in production; and (e) the issue tracker has no record of this trajectory because the commit message did not reference the issue and the issue was not closed.
 
-The retroactive picture is: there is no spec-mandated `uid` field on Datastream; cs-go's original surface was an over-specification; the silent removal is the right direction but the execution left the codebase broken and the deployments out of sync.
+The retroactive picture is: there is no spec-mandated `uid` field on Datastream; cs-go's original surface was an over-specification; the silent removal is the right direction but the execution left the test suite broken, the deployments out of sync, and the issue tracker silent on the trajectory.
 
 ---
 
@@ -297,12 +318,12 @@ The retroactive picture is: there is no spec-mandated `uid` field on Datastream;
 
 **Keep with edits.** Suggested edits to the issue body, in priority order:
 
-1. **Add a "Status update (2026-04-30)" section** stating that commit `1562201` removed `CommonSSN` from the `Datastream` struct, was not announced as a fix for this issue, broke the `go build`, and may not have updated existing databases.
+1. **Add a "Status update (2026-04-30)" section** stating that commit `1562201` removed `CommonSSN` from the `Datastream` struct, was not announced as a fix for this issue, broke the test-fixtures package (`go test ./...` does not compile, though `./cmd/server` does), and may not have updated existing databases.
 2. **Add a "Spec basis" note**: per the OGC 23-002 Part 2 bundled OpenAPI (lines 266–340, 1728–1734), Datastream has no `uid` property. The original three options (auto-generate / nullable / require) all assumed cs-go must keep the field; per the spec, removing it is also valid and is what `1562201` did.
 3. **Cross-reference #12** as a sibling tracking the surviving DB-column / index aspect.
 4. **Either close as superseded** by `1562201` plus a follow-up issue for the build break and DB-migration plan, **or** keep open as the canonical tracker for finishing the cleanup.
 
-Do **not** silently close as fixed: the partial-fix state is real and visible (build break, DB drift), and the trail of decisions deserves to remain auditable.
+Do **not** silently close as fixed: the partial-fix state is real and visible (test-suite break, DB drift, deployment running older code), and the trail of decisions deserves to remain auditable.
 
 ---
 
