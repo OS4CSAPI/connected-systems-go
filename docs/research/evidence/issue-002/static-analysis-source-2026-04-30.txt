@@ -1,0 +1,271 @@
+=== datastream_handler.DeleteDatastream ===
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *DatastreamHandler) DeleteDatastream(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "dataStreamId")
+	cascade := r.URL.Query().Get("cascade") == "true"
+	if err := h.repo.Delete(id, cascade); err != nil {
+		h.logger.Error("Failed to delete datastream", zap.String("id", id), zap.Error(err))
+		render.Status(r, http.StatusInternalServerError)
+		render.JSON(w, r, map[string]string{"error": "Failed to delete datastream"})
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *DatastreamHandler) GetDatastreamSchema(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "dataStreamId")
+	schema, err := h.repo.GetSchema(id)
+	if err != nil {
+		h.logger.Error("Failed to get datastream schema", zap.String("id", id), zap.Error(err))
+		render.Status(r, http.StatusNotFound)
+		render.JSON(w, r, map[string]string{"error": "Datastream not found"})
+		return
+	}
+
+	if schema == nil {
+		render.Status(r, http.StatusNotFound)
+
+=== system_handler.DeleteSystem ===
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// DeleteSystem deletes a system
+func (h *SystemHandler) DeleteSystem(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	cascade := r.URL.Query().Get("cascade") == "true"
+
+	if err := h.repo.Delete(id, cascade); err != nil {
+		h.logger.Error("Failed to delete system", zap.String("id", id), zap.Error(err))
+		render.Status(r, http.StatusInternalServerError)
+		render.JSON(w, r, map[string]string{"error": "Failed to delete system"})
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// GetSubsystems retrieves subsystems of a system
+func (h *SystemHandler) GetSubsystems(w http.ResponseWriter, r *http.Request) {
+	parentID := chi.URLParam(r, "id")
+	recursive := r.URL.Query().Get("recursive") == "true"
+	params := queryparams.SystemQueryParams{}.BuildFromRequest(r)
+
+	systems, err := h.repo.GetSubsystems(parentID, recursive)
+	if err != nil {
+		h.logger.Error("Failed to get subsystems", zap.String("parentID", parentID), zap.Error(err))
+		render.Status(r, http.StatusInternalServerError)
+		render.JSON(w, r, map[string]string{"error": "Failed to get subsystems"})
+		return
+	}
+
+	h.populateSystemAssociationLinks(systems)
+
+
+=== deployment_handler.DeleteDeployment ===
+		render.Status(r, http.StatusInternalServerError)
+		render.JSON(w, r, map[string]string{"error": "Failed to update deployment"})
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *DeploymentHandler) DeleteDeployment(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+
+	if err := h.repo.Delete(id); err != nil {
+		h.logger.Error("Failed to delete deployment", zap.String("id", id), zap.Error(err))
+		render.Status(r, http.StatusInternalServerError)
+		render.JSON(w, r, map[string]string{"error": "Failed to delete deployment"})
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// List all subdeployments
+func (h *DeploymentHandler) ListSubdeployments(w http.ResponseWriter, r *http.Request) {
+	parentID := chi.URLParam(r, "id")
+	params := queryparams.DeploymentsQueryParams{}.BuildFromRequest(r)
+
+	deployments, total, err := h.repo.List(params, &parentID)
+	if err != nil {
+		h.logger.Error("Failed to list subdeployments", zap.Error(err))
+		render.Status(r, http.StatusInternalServerError)
+		render.JSON(w, r, map[string]string{"error": "Internal server error"})
+		return
+	}
+
+	acceptHeader := r.Header.Get("Accept")
+	collection := h.fc.BuildCollection(acceptHeader, deployments, h.cfg.API.BaseURL+r.URL.Path, int(total), r.URL.Query(), params.QueryParams)
+
+=== datastream_repository.Delete ===
+func (r *DatastreamRepository) deriveFOIFromSamplingFeature(datastream *domains.Datastream) {
+	if datastream.SamplingFeatureID == nil {
+		return
+	}
+	var sf domains.SamplingFeature
+	if err := r.db.Select("id", "sampled_feature_link", "sampled_feature_id").
+		Where("id = ?", *datastream.SamplingFeatureID).First(&sf).Error; err == nil {
+		datastream.FeatureOfInterest = sf.SampledFeatureLink
+		datastream.FeatureOfInterestID = sf.SampledFeatureID
+	}
+}
+
+// Delete deletes a datastream.
+// If cascade is true, all observations associated with the datastream are deleted first.
+func (r *DatastreamRepository) Delete(id string, cascade bool) error {
+	if !cascade {
+		return r.db.Delete(&domains.Datastream{}, "id = ?", id).Error
+	}
+
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("datastream_id = ?", id).Delete(&domains.Observation{}).Error; err != nil {
+			return err
+		}
+		return tx.Delete(&domains.Datastream{}, "id = ?", id).Error
+	})
+}
+
+// GetSchema retrieves only the schema for a datastream.
+func (r *DatastreamRepository) GetSchema(id string) (*domains.DatastreamSchema, error) {
+	var datastream domains.Datastream
+	err := r.db.Select("id", "schema").Where("id = ?", id).First(&datastream).Error
+	if err != nil {
+		return nil, err
+	}
+	return datastream.Schema, nil
+}
+
+// UpdateSchema updates only the schema of a datastream.
+func (r *DatastreamRepository) UpdateSchema(id string, schema *domains.DatastreamSchema) error {
+	return r.db.Model(&domains.Datastream{}).Where("id = ?", id).Update("schema", schema).Error
+}
+
+func (r *DatastreamRepository) applyFilters(query *gorm.DB, params *queryparams.DatastreamsQueryParams, systemID *string) *gorm.DB {
+	if len(params.IDs) > 0 {
+		query = query.Where("id IN ? OR unique_identifier IN ?", params.IDs, params.IDs)
+	}
+
+	if len(params.Q) > 0 {
+		var clauses []string
+		var args []interface{}
+		for _, term := range params.Q {
+			like := "%" + term + "%"
+			clauses = append(clauses, "name ILIKE ?")
+			args = append(args, like)
+			clauses = append(clauses, "description ILIKE ?")
+			args = append(args, like)
+			clauses = append(clauses, "output_name ILIKE ?")
+			args = append(args, like)
+		}
+		query = query.Where(strings.Join(clauses, " OR "), args...)
+	}
+
+=== system_repository.Delete + deleteCascade (truncated) ===
+		return tx.Exec(
+			"INSERT INTO system_procedures (system_id, procedure_id) VALUES (?, ?) ON CONFLICT DO NOTHING",
+			system.ID, *system.SystemKindID,
+		).Error
+	}
+	return nil
+}
+
+// Delete deletes a system
+func (r *SystemRepository) Delete(id string, cascade bool) error {
+	if !cascade {
+		return r.db.Delete(&domains.System{}, "id = ?", id).Error
+	}
+
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		return r.deleteCascade(tx, id)
+	})
+}
+
+func (r *SystemRepository) deleteCascade(tx *gorm.DB, systemID string) error {
+	var childIDs []string
+	if err := tx.Model(&domains.System{}).Where("parent_system_id = ?", systemID).Pluck("id", &childIDs).Error; err != nil {
+		return err
+	}
+
+	for _, childID := range childIDs {
+		if err := r.deleteCascade(tx, childID); err != nil {
+			return err
+		}
+	}
+
+	if err := tx.Where("parent_system_id = ?", systemID).Delete(&domains.SamplingFeature{}).Error; err != nil {
+		return err
+	}
+
+	if err := r.deleteSystemDatastreams(tx, systemID); err != nil {
+		return err
+	}
+
+	if err := r.deleteSystemControlStreams(tx, systemID); err != nil {
+		return err
+	}
+
+	if err := tx.Where("system_id = ?", systemID).Delete(&domains.SystemHistoryRevision{}).Error; err != nil {
+		return err
+	}
+
+	if err := r.removeSystemFromDeployments(tx, systemID); err != nil {
+		return err
+	}
+
+	if err := tx.Exec("DELETE FROM system_deployments WHERE system_id = ?", systemID).Error; err != nil {
+		return err
+	}
+	if err := tx.Exec("DELETE FROM system_procedures WHERE system_id = ?", systemID).Error; err != nil {
+		return err
+	}
+
+	return tx.Delete(&domains.System{}, "id = ?", systemID).Error
+}
+
+func (r *SystemRepository) deleteSystemDatastreams(tx *gorm.DB, systemID string) error {
+	var datastreamIDs []string
+	if err := tx.Model(&domains.Datastream{}).Where("system_id = ?", systemID).Pluck("id", &datastreamIDs).Error; err != nil {
+		return err
+	}
+
+	if len(datastreamIDs) > 0 {
+		if err := tx.Where("datastream_id IN ?", datastreamIDs).Delete(&domains.Observation{}).Error; err != nil {
+			return err
+		}
+	}
+
+	return tx.Where("system_id = ?", systemID).Delete(&domains.Datastream{}).Error
+}
+
+func (r *SystemRepository) deleteSystemControlStreams(tx *gorm.DB, systemID string) error {
+	var controlStreamIDs []string
+	if err := tx.Model(&domains.ControlStream{}).Where("system_id = ?", systemID).Pluck("id", &controlStreamIDs).Error; err != nil {
+		return err
+	}
+
+	if len(controlStreamIDs) > 0 {
+		if err := tx.Where("control_stream_id IN ?", controlStreamIDs).Delete(&domains.Command{}).Error; err != nil {
+			return err
+		}
+
+=== Datastream model many2many ===
+11:// Datastream represents an OGC Connected Systems datastream resource.
+57:	Systems []System `gorm:"many2many:system_datastreams;"`
+
+=== Cascade query parsing ===
+internal/api/datastream_handler.go:188:	cascade := r.URL.Query().Get("cascade") == "true"
+internal/api/datastream_handler.go:189:	if err := h.repo.Delete(id, cascade); err != nil {
+internal/api/control_stream_handler.go:199:	cascade := r.URL.Query().Get("cascade") == "true"
+internal/api/control_stream_handler.go:200:	if err := h.repo.Delete(id, cascade); err != nil {
+internal/api/system_handler.go:153:	cascade := r.URL.Query().Get("cascade") == "true"
+internal/api/system_handler.go:155:	if err := h.repo.Delete(id, cascade); err != nil {

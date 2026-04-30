@@ -1,0 +1,19 @@
+              table              |                   conname                    |                         constraint_def                         
+---------------------------------+----------------------------------------------+----------------------------------------------------------------
+ layer                           | layer_topology_id_fkey                       | FOREIGN KEY (topology_id) REFERENCES topology(id)
+ procedure_controlled_properties | fk_procedure_controlled_properties_procedure | FOREIGN KEY (procedure_id) REFERENCES procedures(id)
+ procedure_controlled_properties | fk_procedure_controlled_properties_property  | FOREIGN KEY (property_id) REFERENCES properties(id)
+ procedure_observed_properties   | fk_procedure_observed_properties_procedure   | FOREIGN KEY (procedure_id) REFERENCES procedures(id)
+ procedure_observed_properties   | fk_procedure_observed_properties_property    | FOREIGN KEY (property_id) REFERENCES properties(id)
+ sampling_features               | fk_systems_sampling_features                 | FOREIGN KEY (parent_system_id) REFERENCES systems(id)
+ system_controlstreams           | fk_system_controlstreams_control_stream      | FOREIGN KEY (control_stream_id) REFERENCES control_streams(id)
+ system_controlstreams           | fk_system_controlstreams_system              | FOREIGN KEY (system_id) REFERENCES systems(id)
+ system_datastreams              | fk_system_datastreams_datastream             | FOREIGN KEY (datastream_id) REFERENCES datastreams(id)
+ system_datastreams              | fk_system_datastreams_system                 | FOREIGN KEY (system_id) REFERENCES systems(id)
+ system_deployments              | fk_system_deployments_deployment             | FOREIGN KEY (deployment_id) REFERENCES deployments(id)
+ system_deployments              | fk_system_deployments_system                 | FOREIGN KEY (system_id) REFERENCES systems(id)
+ system_procedures               | fk_system_procedures_procedure               | FOREIGN KEY (procedure_id) REFERENCES procedures(id)
+ system_procedures               | fk_system_procedures_system                  | FOREIGN KEY (system_id) REFERENCES systems(id)
+ systems                         | fk_systems_system_kind                       | FOREIGN KEY (system_kind_id) REFERENCES procedures(id)
+(15 rows)
+

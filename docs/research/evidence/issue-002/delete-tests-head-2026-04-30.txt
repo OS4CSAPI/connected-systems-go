@@ -1,0 +1,165 @@
+===issue2_test1 transcript replay===
+
+=========== T1 ΓÇö POST /systems (bootstrap parent) ===========
+HTTP/2 500 
+access-control-allow-headers: Authorization, Content-Type, Accept
+access-control-allow-methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+access-control-allow-origin: *
+access-control-max-age: 86400
+alt-svc: h3=":443"; ma=2592000
+content-type: application/json
+date: Thu, 30 Apr 2026 18:09:44 GMT
+vary: Origin
+via: 1.1 Caddy
+SYS_ID=
+
+=========== T2 ΓÇö POST /systems/{SYS_ID}/datastreams ===========
+HTTP/2 405 
+access-control-allow-headers: Authorization, Content-Type, Accept
+access-control-allow-methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+access-control-allow-origin: *
+access-control-max-age: 86400
+allow: GET
+allow: PUT
+allow: DELETE
+alt-svc: h3=":443"; ma=2592000
+date: Thu, 30 Apr 2026 18:09:44 GMT
+DS_ID=
+
+=========== T3 ΓÇö POST /datastreams/{DS_ID}/observations ===========
+HTTP/2 405 
+access-control-allow-headers: Authorization, Content-Type, Accept
+access-control-allow-methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+access-control-allow-origin: *
+access-control-max-age: 86400
+allow: GET
+allow: PUT
+allow: DELETE
+alt-svc: h3=":443"; ma=2592000
+date: Thu, 30 Apr 2026 18:09:44 GMT
+OBS_ID=
+
+=========== T4 ΓÇö pre-delete sanity checks ===========
+GET /datastreams/:
+  HTTP 200
+GET /observations/:
+  HTTP 200
+GET /datastreams//observations (count):
+  items: 0
+
+=========== T5 ΓÇö DELETE /datastreams/{DS_ID} (no cascade) ΓÇö issue claim: 500 PG FK error ===========
+HTTP/2 405 
+access-control-allow-headers: Authorization, Content-Type, Accept
+access-control-allow-methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+access-control-allow-origin: *
+access-control-max-age: 86400
+allow: GET
+alt-svc: h3=":443"; ma=2592000
+date: Thu, 30 Apr 2026 18:09:44 GMT
+
+After delete ΓÇö GET /datastreams/:
+  HTTP 200
+After delete ΓÇö GET /observations/  (orphan check):
+  HTTP 200
+After delete ΓÇö body of orphan obs (truncated):
+{"items":[{"id":"98e8cdc0-0f5d-4810-874c-69d611cc14be","datastream@id":"8fb3e570-64f8-4f04-8ade-89daffe24bb7","phenomenonTime":"2026-04-30T00:00:00Z","resultTime":"2026-04-30T00:00:00Z","result":{"value":42}}],"links":[{"href":"https://129-80-248-53.sslip.io/csapi-go-head/observations/","rel":"self"}]}
+
+
+===END T1-T5===
+SYS_ID=
+DS_ID=  (deleted)
+OBS_ID=  (orphan?)
+===issue2_test2 transcript replay===
+
+=========== T6 ΓÇö psql FK reality (information_schema) ===========
+ERROR:  common column name "constraint_schema" appears more than once in left table
+
+=========== T7 ΓÇö Same query against PRODUCTION DB ===========
+ERROR:  common column name "constraint_schema" appears more than once in left table
+
+=========== T8 ΓÇö DELETE /datastreams/8fb3e570-64f8-4f04-8ade-89daffe24bb7?cascade=true ===========
+HTTP/2 500 
+access-control-allow-headers: Authorization, Content-Type, Accept
+access-control-allow-methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+access-control-allow-origin: *
+access-control-max-age: 86400
+alt-svc: h3=":443"; ma=2592000
+content-type: application/json
+date: Thu, 30 Apr 2026 18:09:46 GMT
+vary: Origin
+via: 1.1 Caddy
+After: GET datastream -> 200
+After: GET observation -> 200
+
+=========== T9 ΓÇö Setup: fresh system + datastream for system-delete test ===========
+SYS_ID2=
+DS2_ID=
+
+=========== T10 ΓÇö DELETE /systems/ (no cascade) ΓÇö has child datastream ===========
+HTTP/2 405 
+access-control-allow-headers: Authorization, Content-Type, Accept
+access-control-allow-methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+access-control-allow-origin: *
+access-control-max-age: 86400
+allow: GET
+allow: POST
+alt-svc: h3=":443"; ma=2592000
+After: GET system -> 200
+After: GET datastream -> 200
+
+=========== T11 ΓÇö DELETE /systems/?cascade=true ===========
+HTTP/2 405 
+access-control-allow-headers: Authorization, Content-Type, Accept
+access-control-allow-methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+access-control-allow-origin: *
+access-control-max-age: 86400
+allow: GET
+allow: POST
+alt-svc: h3=":443"; ma=2592000
+After: GET system -> 200
+After: GET datastream -> 200
+
+=========== T12 ΓÇö POST /deployments ===========
+HTTP/2 201 
+access-control-allow-headers: Authorization, Content-Type, Accept
+access-control-allow-methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+access-control-allow-origin: *
+access-control-max-age: 86400
+alt-svc: h3=":443"; ma=2592000
+date: Thu, 30 Apr 2026 18:09:46 GMT
+location: https://129-80-248-53.sslip.io/csapi-go-head/deployments/c91ec867-6bdf-4db5-aefd-f88f18ca9d67
+DEP_ID=c91ec867-6bdf-4db5-aefd-f88f18ca9d67
+
+=========== T13 ΓÇö DELETE /deployments/c91ec867-6bdf-4db5-aefd-f88f18ca9d67  (no children ΓåÆ expect 204) ===========
+HTTP/2 204 
+access-control-allow-headers: Authorization, Content-Type, Accept
+access-control-allow-methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+access-control-allow-origin: *
+access-control-max-age: 86400
+alt-svc: h3=":443"; ma=2592000
+date: Thu, 30 Apr 2026 18:09:46 GMT
+vary: Origin
+After: GET deployment -> 404
+
+=========== T14 ΓÇö POST /procedures ===========
+HTTP/2 201 
+access-control-allow-headers: Authorization, Content-Type, Accept
+access-control-allow-methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+access-control-allow-origin: *
+access-control-max-age: 86400
+alt-svc: h3=":443"; ma=2592000
+date: Thu, 30 Apr 2026 18:09:47 GMT
+location: https://129-80-248-53.sslip.io/csapi-go-head/procedures/c4c24697-59bf-473f-bb6a-1b26d7949cee
+PROC_ID=c4c24697-59bf-473f-bb6a-1b26d7949cee
+
+=========== T15 ΓÇö DELETE /procedures/c4c24697-59bf-473f-bb6a-1b26d7949cee (no children ΓåÆ expect 204) ===========
+HTTP/2 204 
+access-control-allow-headers: Authorization, Content-Type, Accept
+access-control-allow-methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+access-control-allow-origin: *
+access-control-max-age: 86400
+alt-svc: h3=":443"; ma=2592000
+date: Thu, 30 Apr 2026 18:09:47 GMT
+vary: Origin
+
+===END phase 2 tests===
