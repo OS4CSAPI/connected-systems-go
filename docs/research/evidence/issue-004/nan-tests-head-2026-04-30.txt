@@ -1,0 +1,151 @@
+TIMESTAMP=1777582966
+
+=== Setup: system ===
+SYS=8bbc4f56-1ed9-40b1-b204-c12af0b10a3d
+
+=== Setup: datastream PLAIN (no nilValues) ===
+DS_PLAIN=0f64ff70-8004-4c04-873b-4550aca2ab36
+
+=== Setup: datastream NIL (nilValues declared) ===
+DS_NIL=94f2c517-2451-4271-be69-2feda6360123
+
+=== Setup: datastream OPT (optional baro_altitude) ===
+DS_OPT=fe385ab9-2276-45dc-bad5-9105426756b1
+
+=== Setup: datastream SENT (-999 sentinel as nilValue) ===
+DS_SENT=4bb1912d-c556-4d58-b178-52e229f18ab8
+
+=== T1 string "NaN" / PLAIN ===
+  body: {"resultTime":"2026-04-30T12:00:00Z","result":{"baro_altitude":"NaN","geo_altitude":10500.0}}
+  ds:   0f64ff70-8004-4c04-873b-4550aca2ab36
+{"error":"Observation does not match parent datastream schema: result.baro_altitude must be a number"}
+
+  [code=400 len=103]
+
+=== T2 string "NaN" / NIL (nilValues=NaN declared) ===
+  body: {"resultTime":"2026-04-30T12:00:01Z","result":{"baro_altitude":"NaN","geo_altitude":10500.0}}
+  ds:   94f2c517-2451-4271-be69-2feda6360123
+{"error":"Observation does not match parent datastream schema: result.baro_altitude must be a number"}
+
+  [code=400 len=103]
+
+=== T3 null / PLAIN ===
+  body: {"resultTime":"2026-04-30T12:00:02Z","result":{"baro_altitude":null,"geo_altitude":10500.0}}
+  ds:   0f64ff70-8004-4c04-873b-4550aca2ab36
+{"error":"Observation does not match parent datastream schema: result.baro_altitude must be a number"}
+
+  [code=400 len=103]
+
+=== T4 null / NIL ===
+  body: {"resultTime":"2026-04-30T12:00:03Z","result":{"baro_altitude":null,"geo_altitude":10500.0}}
+  ds:   94f2c517-2451-4271-be69-2feda6360123
+{"error":"Observation does not match parent datastream schema: result.baro_altitude must be a number"}
+
+  [code=400 len=103]
+
+=== T5 missing field / PLAIN ===
+  body: {"resultTime":"2026-04-30T12:00:04Z","result":{"geo_altitude":10500.0}}
+  ds:   0f64ff70-8004-4c04-873b-4550aca2ab36
+{"error":"Observation does not match parent datastream schema: result.baro_altitude is required by datastream schema"}
+
+  [code=400 len=119]
+
+=== T6 sentinel -999 / PLAIN (no nilValues) ===
+  body: {"resultTime":"2026-04-30T12:00:05Z","result":{"baro_altitude":-999.0,"geo_altitude":10500.0}}
+  ds:   0f64ff70-8004-4c04-873b-4550aca2ab36
+
+  [code=201 len=0]
+
+=== T7 substitute 0.0 / PLAIN (current workaround) ===
+  body: {"resultTime":"2026-04-30T12:00:06Z","result":{"baro_altitude":0.0,"geo_altitude":10500.0}}
+  ds:   0f64ff70-8004-4c04-873b-4550aca2ab36
+
+  [code=201 len=0]
+
+=== T8 invalid JSON literal NaN / PLAIN ===
+  body: {"resultTime":"2026-04-30T12:00:07Z","result":{"baro_altitude":NaN,"geo_altitude":10500.0}}
+  ds:   0f64ff70-8004-4c04-873b-4550aca2ab36
+{"error":"invalid character 'N' looking for beginning of value"}
+
+  [code=400 len=65]
+
+=== T9 invalid JSON literal Infinity / PLAIN ===
+  body: {"resultTime":"2026-04-30T12:00:08Z","result":{"baro_altitude":Infinity,"geo_altitude":10500.0}}
+  ds:   0f64ff70-8004-4c04-873b-4550aca2ab36
+{"error":"invalid character 'I' looking for beginning of value"}
+
+  [code=400 len=65]
+
+=== T10 boolean for numeric / PLAIN ===
+  body: {"resultTime":"2026-04-30T12:00:09Z","result":{"baro_altitude":true,"geo_altitude":10500.0}}
+  ds:   0f64ff70-8004-4c04-873b-4550aca2ab36
+{"error":"Observation does not match parent datastream schema: result.baro_altitude must be a number"}
+
+  [code=400 len=103]
+
+=== T11 extra unknown field / PLAIN ===
+  body: {"resultTime":"2026-04-30T12:00:10Z","result":{"baro_altitude":1.0,"geo_altitude":10500.0,"undeclared":"hi"}}
+  ds:   0f64ff70-8004-4c04-873b-4550aca2ab36
+
+  [code=201 len=0]
+
+=== T12 numeric -999 / SENT (-999 nilValue declared) ===
+  body: {"resultTime":"2026-04-30T12:00:11Z","result":{"baro_altitude":-999}}
+  ds:   4bb1912d-c556-4d58-b178-52e229f18ab8
+
+  [code=201 len=0]
+
+=== T13 GET DS_NIL ΓÇö does nilValues survive round-trip? ===
+{"id":"94f2c517-2451-4271-be69-2feda6360123","name":"DSnil","system@link":{"href":"systems/8bbc4f56-1ed9-40b1-b204-c12af0b10a3d"},"outputName":"temp","observedProperties":[{"definition":"http://example.org/temp","label":"Temp"}],"resultType":"DataRecord","live":false,"schema":{"obsFormat":"application/json","resultSchema":{"type":"DataRecord","fields":[{"name":"baro_altitude","type":"Quantity","definition":"http://example.org/alt","uom":{"code":"m"},"nilValues":[{"reason":"http://www.opengis.net/def/nil/OGC/0/missing","value":"NaN"}]},{"name":"geo_altitude","type":"Quantity","definition":"http://example.org/galt","uom":{"code":"m"}}]}},"links":[{"href":"https://129-80-248-53.sslip.io/csapi-go-head/systems/8bbc4f56-1ed9-40b1-b204-c12af0b10a3d","rel":"ogc-rel:systems"},{"href":"https://129-80-248-53.sslip.io/csapi-go-head/datastreams/94f2c517-2451-4271-be69-2feda6360123/observations","rel":"ogc-rel:observations"}],"Systems":null}
+
+
+=== T14 missing field on optional / OPT ===
+  body: {"resultTime":"2026-04-30T12:00:12Z","result":{"geo_altitude":10500.0}}
+  ds:   fe385ab9-2276-45dc-bad5-9105426756b1
+
+  [code=201 len=0]
+
+=== T15 null on optional / OPT ===
+  body: {"resultTime":"2026-04-30T12:00:13Z","result":{"baro_altitude":null,"geo_altitude":10500.0}}
+  ds:   fe385ab9-2276-45dc-bad5-9105426756b1
+{"error":"Observation does not match parent datastream schema: result.baro_altitude must be a number"}
+
+  [code=400 len=103]
+
+=== T16 GET observations of DS_PLAIN ΓÇö what survived storage ===
+{"items":[{"id":"30ed402f-5d7b-4d96-8083-96c28890b4d2","datastream@id":"0f64ff70-8004-4c04-873b-4550aca2ab36","phenomenonTime":"2026-04-30T12:00:10Z","resultTime":"2026-04-30T12:00:10Z","result":{"undeclared":"hi","geo_altitude":10500,"baro_altitude":1}},{"id":"28eb6508-287a-4f48-9f23-b5fa380617ef","datastream@id":"0f64ff70-8004-4c04-873b-4550aca2ab36","phenomenonTime":"2026-04-30T12:00:06Z","resultTime":"2026-04-30T12:00:06Z","result":{"geo_altitude":10500,"baro_altitude":0}},{"id":"f702e90b-ba8b-4679-bc0a-bd8b2f676896","datastream@id":"0f64ff70-8004-4c04-873b-4550aca2ab36","phenomenonTime":"2026-04-30T12:00:05Z","resultTime":"2026-04-30T12:00:05Z","result":{"geo_altitude":10500,"baro_altitude":-999}}],"links":[{"href":"https://129-80-248-53.sslip.io/csapi-go-head/datastreams/0f64ff70-8004-4c04-873b-4550aca2ab36/observations?limit=20","rel":"self"}]}
+
+
+=== T17 Server log slice ===
+2026/04/30 21:02:04 [a7486cb4d9ee/K5HNfTC4g6-000164] "POST http://129-80-248-53.sslip.io/datastreams/7feaa9e1-2781-4ba6-9242-ef0a5a5ae41d/observations HTTP/1.1" from 129.80.248.53 - 400 103B in 632.723┬╡s
+2026/04/30 21:02:05 [a7486cb4d9ee/K5HNfTC4g6-000165] "POST http://129-80-248-53.sslip.io/datastreams/9c2860f5-0b90-4652-80b6-6ece88d9e21e/observations HTTP/1.1" from 129.80.248.53 - 400 103B in 1.342447ms
+2026/04/30 21:02:05 [a7486cb4d9ee/K5HNfTC4g6-000166] "POST http://129-80-248-53.sslip.io/datastreams/7feaa9e1-2781-4ba6-9242-ef0a5a5ae41d/observations HTTP/1.1" from 129.80.248.53 - 400 103B in 1.231646ms
+2026/04/30 21:02:05 [a7486cb4d9ee/K5HNfTC4g6-000167] "POST http://129-80-248-53.sslip.io/datastreams/9c2860f5-0b90-4652-80b6-6ece88d9e21e/observations HTTP/1.1" from 129.80.248.53 - 400 103B in 958.565┬╡s
+2026/04/30 21:02:05 [a7486cb4d9ee/K5HNfTC4g6-000168] "POST http://129-80-248-53.sslip.io/datastreams/7feaa9e1-2781-4ba6-9242-ef0a5a5ae41d/observations HTTP/1.1" from 129.80.248.53 - 400 119B in 905.125┬╡s
+2026/04/30 21:02:05 [a7486cb4d9ee/K5HNfTC4g6-000169] "POST http://129-80-248-53.sslip.io/datastreams/7feaa9e1-2781-4ba6-9242-ef0a5a5ae41d/observations HTTP/1.1" from 129.80.248.53 - 201 0B in 2.570213ms
+2026/04/30 21:02:05 [a7486cb4d9ee/K5HNfTC4g6-000170] "POST http://129-80-248-53.sslip.io/datastreams/7feaa9e1-2781-4ba6-9242-ef0a5a5ae41d/observations HTTP/1.1" from 129.80.248.53 - 201 0B in 2.185931ms
+2026/04/30 21:02:05 [a7486cb4d9ee/K5HNfTC4g6-000171] "POST http://129-80-248-53.sslip.io/datastreams/7feaa9e1-2781-4ba6-9242-ef0a5a5ae41d/observations HTTP/1.1" from 129.80.248.53 - 400 65B in 839.044┬╡s
+2026/04/30 21:02:05 [a7486cb4d9ee/K5HNfTC4g6-000172] "POST http://129-80-248-53.sslip.io/datastreams/7feaa9e1-2781-4ba6-9242-ef0a5a5ae41d/observations HTTP/1.1" from 129.80.248.53 - 400 65B in 861.484┬╡s
+2026/04/30 21:02:05 [a7486cb4d9ee/K5HNfTC4g6-000173] "POST http://129-80-248-53.sslip.io/datastreams/7feaa9e1-2781-4ba6-9242-ef0a5a5ae41d/observations HTTP/1.1" from 129.80.248.53 - 400 103B in 937.565┬╡s
+2026/04/30 21:02:05 [a7486cb4d9ee/K5HNfTC4g6-000174] "POST http://129-80-248-53.sslip.io/datastreams/7feaa9e1-2781-4ba6-9242-ef0a5a5ae41d/observations HTTP/1.1" from 129.80.248.53 - 201 0B in 2.350932ms
+2026/04/30 21:02:05 [a7486cb4d9ee/K5HNfTC4g6-000175] "POST http://129-80-248-53.sslip.io/datastreams/092df689-ae4e-4798-a293-174feb93551e/observations HTTP/1.1" from 129.80.248.53 - 201 0B in 2.294091ms
+2026/04/30 21:02:05 [a7486cb4d9ee/K5HNfTC4g6-000177] "POST http://129-80-248-53.sslip.io/datastreams/3028cdb5-ffc6-4acc-99ee-4e50d813484c/observations HTTP/1.1" from 129.80.248.53 - 201 0B in 2.284171ms
+2026/04/30 21:02:05 [a7486cb4d9ee/K5HNfTC4g6-000178] "POST http://129-80-248-53.sslip.io/datastreams/3028cdb5-ffc6-4acc-99ee-4e50d813484c/observations HTTP/1.1" from 129.80.248.53 - 400 103B in 926.205┬╡s
+2026/04/30 21:02:06 [a7486cb4d9ee/K5HNfTC4g6-000179] "GET http://129-80-248-53.sslip.io/datastreams/7feaa9e1-2781-4ba6-9242-ef0a5a5ae41d/observations?limit=20 HTTP/1.1" from 129.80.248.53 - 200 864B in 1.543808ms
+2026/04/30 21:02:46 [a7486cb4d9ee/K5HNfTC4g6-000185] "POST http://129-80-248-53.sslip.io/datastreams/0f64ff70-8004-4c04-873b-4550aca2ab36/observations HTTP/1.1" from 129.80.248.53 - 400 103B in 760.004┬╡s
+2026/04/30 21:02:46 [a7486cb4d9ee/K5HNfTC4g6-000186] "POST http://129-80-248-53.sslip.io/datastreams/94f2c517-2451-4271-be69-2feda6360123/observations HTTP/1.1" from 129.80.248.53 - 400 103B in 594.643┬╡s
+2026/04/30 21:02:46 [a7486cb4d9ee/K5HNfTC4g6-000187] "POST http://129-80-248-53.sslip.io/datastreams/0f64ff70-8004-4c04-873b-4550aca2ab36/observations HTTP/1.1" from 129.80.248.53 - 400 103B in 902.684┬╡s
+2026/04/30 21:02:46 [a7486cb4d9ee/K5HNfTC4g6-000188] "POST http://129-80-248-53.sslip.io/datastreams/94f2c517-2451-4271-be69-2feda6360123/observations HTTP/1.1" from 129.80.248.53 - 400 103B in 866.285┬╡s
+2026/04/30 21:02:47 [a7486cb4d9ee/K5HNfTC4g6-000189] "POST http://129-80-248-53.sslip.io/datastreams/0f64ff70-8004-4c04-873b-4550aca2ab36/observations HTTP/1.1" from 129.80.248.53 - 400 119B in 892.964┬╡s
+2026/04/30 21:02:47 [a7486cb4d9ee/K5HNfTC4g6-000190] "POST http://129-80-248-53.sslip.io/datastreams/0f64ff70-8004-4c04-873b-4550aca2ab36/observations HTTP/1.1" from 129.80.248.53 - 201 0B in 1.933449ms
+2026/04/30 21:02:47 [a7486cb4d9ee/K5HNfTC4g6-000191] "POST http://129-80-248-53.sslip.io/datastreams/0f64ff70-8004-4c04-873b-4550aca2ab36/observations HTTP/1.1" from 129.80.248.53 - 201 0B in 2.102131ms
+2026/04/30 21:02:47 [a7486cb4d9ee/K5HNfTC4g6-000192] "POST http://129-80-248-53.sslip.io/datastreams/0f64ff70-8004-4c04-873b-4550aca2ab36/observations HTTP/1.1" from 129.80.248.53 - 400 65B in 691.204┬╡s
+2026/04/30 21:02:47 [a7486cb4d9ee/K5HNfTC4g6-000193] "POST http://129-80-248-53.sslip.io/datastreams/0f64ff70-8004-4c04-873b-4550aca2ab36/observations HTTP/1.1" from 129.80.248.53 - 400 65B in 721.083┬╡s
+2026/04/30 21:02:47 [a7486cb4d9ee/K5HNfTC4g6-000194] "POST http://129-80-248-53.sslip.io/datastreams/0f64ff70-8004-4c04-873b-4550aca2ab36/observations HTTP/1.1" from 129.80.248.53 - 400 103B in 992.845┬╡s
+2026/04/30 21:02:47 [a7486cb4d9ee/K5HNfTC4g6-000195] "POST http://129-80-248-53.sslip.io/datastreams/0f64ff70-8004-4c04-873b-4550aca2ab36/observations HTTP/1.1" from 129.80.248.53 - 201 0B in 2.211291ms
+2026/04/30 21:02:47 [a7486cb4d9ee/K5HNfTC4g6-000196] "POST http://129-80-248-53.sslip.io/datastreams/4bb1912d-c556-4d58-b178-52e229f18ab8/observations HTTP/1.1" from 129.80.248.53 - 201 0B in 1.91257ms
+2026/04/30 21:02:47 [a7486cb4d9ee/K5HNfTC4g6-000198] "POST http://129-80-248-53.sslip.io/datastreams/fe385ab9-2276-45dc-bad5-9105426756b1/observations HTTP/1.1" from 129.80.248.53 - 201 0B in 1.923169ms
+2026/04/30 21:02:47 [a7486cb4d9ee/K5HNfTC4g6-000199] "POST http://129-80-248-53.sslip.io/datastreams/fe385ab9-2276-45dc-bad5-9105426756b1/observations HTTP/1.1" from 129.80.248.53 - 400 103B in 593.563┬╡s
+2026/04/30 21:02:47 [a7486cb4d9ee/K5HNfTC4g6-000200] "GET http://129-80-248-53.sslip.io/datastreams/0f64ff70-8004-4c04-873b-4550aca2ab36/observations?limit=20 HTTP/1.1" from 129.80.248.53 - 200 864B in 1.510527ms
+
+===END NaN tests===
