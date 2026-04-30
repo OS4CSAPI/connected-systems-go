@@ -1,0 +1,148 @@
+Issue #8 — Static analysis (deployment_repository.go and comparison)
+Date: 2026-04-30
+Repo: SomethingCreativeStudios/connected-systems-go (HEAD = OS4CSAPI fork main)
+
+==============================================================================
+1. AFFECTED CODE — internal/repository/deployment_repository.go applyFilters()
+==============================================================================
+
+(lines 117-204 inclusive — full applyFilters body verified)
+
+The relevant tail of applyFilters():
+
+    if len(params.Parent) > 0 && parentId == nil {
+        query = query.Where("parent_deployment_id IN ?", params.Parent)
+    }
+
+    if parentId != nil {
+        if params.Recursive {
+            // Recursive traversal from parent to include all descendants.
+            query = query.Where(`id IN (
+                WITH RECURSIVE deployment_descendants AS (
+                    SELECT id FROM deployments WHERE parent_deployment_id = ?
+                    UNION ALL
+                    SELECT d.id FROM deployments d
+                    JOIN deployment_descendants dd ON d.parent_deployment_id = dd.id
+                )
+                SELECT id FROM deployment_descendants
+            )`, *parentId)
+        } else {
+            // Direct children only
+            query = query.Where("parent_deployment_id = ?", *parentId)
+        }
+    } else {
+        if params.Recursive {
+            // Canonical recursive search should include top-level deployments and all descendants.
+            // [empty branch — no WHERE clause applied, which DOES return all]
+        } else {
+            query = query.Where("parent_deployment_id IS NULL OR parent_deployment_id = ''")
+        }
+    }
+
+Three branches at the top-level (parentId==nil) endpoint:
+
+  A) ?parent=X (no recursive)         → adds WHERE parent_deployment_id IN (X)
+                                         AND ALSO falls into the else branch
+                                         which adds parent_deployment_id IS NULL
+                                         → IMPOSSIBLE CONDITION → 0 results.
+  B) ?recursive=true (no parent)      → empty branch, no parent filter applied
+                                         → returns ALL deployments (flat).
+  C) default (no parent, no recursive)→ adds parent_deployment_id IS NULL
+                                         → returns top-level only.
+
+==============================================================================
+2. NOTABLE — Issue's claim that recursive=true at top level is a no-op
+==============================================================================
+
+The issue body says:
+
+    "Also note: the recursive=true path for parentId==nil is a no-op:
+     GET /deployments?recursive=true
+     Expected: all deployments (top-level + descendants)
+     Actual: same as without recursive — the if params.Recursive branch does nothing"
+
+This is FACTUALLY WRONG. The empty branch IS the correct implementation:
+without an additional WHERE clause, the prior parent_deployment_id IS NULL
+filter is NOT applied (because that filter lives in the sibling else branch),
+so the query returns all rows. The misleading element is the comment, which
+reads like a TODO. It is actually a valid (if cryptic) implementation.
+
+Live tests T1/T2 confirm:
+  T1: GET /deployments              → numberMatched=1 (parent only)
+  T2: GET /deployments?recursive=true → numberMatched=2 (parent + child)
+
+==============================================================================
+3. CONFIRMED CORRECT — handler delegation
+==============================================================================
+
+internal/api/deployment_handler.go:
+
+  ListDeployments() (line 30-33):  h.repo.List(params, nil)        ← parentId=nil
+  ListSubdeployments() (line 132): h.repo.List(params, &parentID)  ← canonical /{id}/subdeployments
+
+The handler correctly delegates the parent context. The defect is in the
+repository layer's filter, not the handler.
+
+==============================================================================
+4. CRITICAL COMPARISON — system_repository.go applyFilters()
+==============================================================================
+
+The issue claims:
+    "consistent with how /systems returns all systems (including subsystems)"
+
+Actual code at internal/repository/system_repository.go:386-389:
+
+    func (r *SystemRepository) applyFilters(query *gorm.DB,
+                                            params *queryparams.SystemsQueryParams) *gorm.DB {
+        if !params.Recursive {
+            query = query.Where("systems.parent_system_id IS NULL")
+        }
+        ...
+
+So /systems ALSO defaults to top-level only. The asymmetry that the issue
+relies on does NOT exist in the code. /systems is rescued by ?recursive=true
+because (a) the filter is conditional on !params.Recursive at the start, and
+(b) the spec endorses recursive at /systems.
+
+For /deployments, by contrast:
+  - The default top-level filter is unconditional except via the recursive
+    branch.
+  - ?recursive=true does work (T2) but the spec does NOT include `recursive`
+    as a parameter for /deployments (see spec evidence file).
+
+==============================================================================
+5. ADDITIONAL DEFECTS UNDER SAME ROOT CAUSE
+==============================================================================
+
+Two correctness defects beyond what the issue documents, both consequences
+of the unconditional top-level-only filter at /deployments default:
+
+  D1 (T3 verified live):  ?parent=X at top level → 0 results, always.
+       Root cause: the if-len(params.Parent) clause adds
+       WHERE parent_deployment_id IN (X), but the same code path then
+       falls into the else branch which adds
+       WHERE parent_deployment_id IS NULL.
+       Both clauses are AND'd → impossible condition.
+
+  D2 (T6 verified live):  ?id=<URI> for a subdeployment → 0 results.
+       Root cause: ?id= adds WHERE id IN ? OR unique_identifier IN ?.
+       Same code path adds parent_deployment_id IS NULL.
+       Net: subdeployments are unreachable via canonical identifier
+       lookup at /deployments?id=, even though they ARE retrievable via
+       direct /deployments/{childId}.
+
+Both defects collapse to the same fix as the main issue: removing the
+unconditional top-level-only filter (Option A in the issue body). With
+that single change, D1 and D2 also resolve.
+
+==============================================================================
+6. FILES TO MODIFY (per spec-aligned fix)
+==============================================================================
+
+internal/repository/deployment_repository.go — remove the unconditional
+   parent_deployment_id IS NULL filter at parentId==nil default (line 198).
+   The recursive=true branch becomes redundant (already returns all)
+   and can be deleted or kept as a no-op alias.
+
+That is sufficient to satisfy the spec semantics for /deployments AND
+fix D1/D2 simultaneously.

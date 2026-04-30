@@ -1,0 +1,174 @@
+Issue #8 — Spec asymmetry between /systems and /deployments
+Date: 2026-04-30
+Source: opengeospatial/ogcapi-connected-systems @ master
+        api/part1/openapi/...
+
+==============================================================================
+1. /systems — paths/systems.yaml (GET)
+==============================================================================
+
+  get:
+    summary: List all available systems
+    description: |-
+      List or search all `System` resources available from this server endpoint.
+
+      By default, only top level systems are included (i.e., subsystems are
+      ommitted) unless the `parent` query parameter is set.
+
+    tags:
+      - Systems
+    parameters:
+      - $ref: ../parameters/idList.yaml
+      - $ref: ../parameters/bbox.yaml
+      - $ref: ../parameters/datetime.yaml
+      - $ref: ../parameters/geom.yaml
+      - $ref: ../parameters/keyword.yaml
+      - $ref: ../parameters/parentIdList.yaml
+      - $ref: ../parameters/procedureIdList.yaml
+      - $ref: ../parameters/foiIdList.yaml
+      - $ref: ../parameters/obsPropIdList.yaml
+      - $ref: ../parameters/controlPropIdList.yaml
+      - $ref: ../parameters/recursive.yaml          ← present
+        description: If true, instructs the server to include subsystems in the
+                     search results.
+      - $ref: ../parameters/limit.yaml
+
+KEY POINTS:
+  - Description EXPLICITLY states "By default, only top level systems are
+    included" — top-level-only IS the spec default for /systems.
+  - `recursive` parameter IS in the parameter list, with override semantics.
+
+==============================================================================
+2. /deployments — paths/deployments.yaml (GET)
+==============================================================================
+
+  get:
+    summary: List all available deployments
+    description: |-
+      List or search all `Deployment` resources available from this server endpoint.
+
+    tags:
+      - Deployments
+    parameters:
+      - $ref: ../parameters/idList.yaml
+      - $ref: ../parameters/bbox.yaml
+      - $ref: ../parameters/datetime.yaml
+      - $ref: ../parameters/geom.yaml
+      - $ref: ../parameters/keyword.yaml
+      - $ref: ../parameters/parentIdList.yaml
+      - $ref: ../parameters/systemIdList.yaml
+      - $ref: ../parameters/foiIdList.yaml
+      - $ref: ../parameters/obsPropIdList.yaml
+      - $ref: ../parameters/controlPropIdList.yaml
+      - $ref: ../parameters/limit.yaml
+
+KEY POINTS:
+  - Description does NOT state any top-level-only restriction. Says
+    "List or search all `Deployment` resources" — the word "all" is the
+    only quantifier present.
+  - `recursive` parameter is NOT in the parameter list. (Verified by
+    direct enumeration of the YAML.)
+  - `parent` parameter IS in the list (parentIdList.yaml ref) for filtering
+    by parent.
+
+==============================================================================
+3. parameters/recursive.yaml (canonical definition)
+==============================================================================
+
+  name: recursive
+  in: query
+  description: |-
+    If true, intructs the server to include nested resources in the search
+    results.
+  required: false
+  schema:
+    type: boolean
+    default: false
+  style: form
+  explode: false
+
+==============================================================================
+4. parameters/parentIdList.yaml
+==============================================================================
+
+  name: parent
+  description: |-
+    List of resource local IDs or unique IDs (URI).
+    Only resources that have a parent that has one of the provided
+    identifiers are selected.
+  in: query
+  required: false
+  schema:
+    $ref: idListSchema.yaml
+  explode: false
+
+==============================================================================
+5. /deployments/{deploymentId}/subdeployments — paths/subdeployments.yaml (GET)
+==============================================================================
+
+  get:
+    summary: List subdeployments
+    description: |-
+      List or search all `Deployment` resources that are part of a specific
+      parent deployment.
+
+      Note that individual members can also be retrieved by ID directly at
+      the canonical `Deployment` resources endpoint.
+    tags:
+      - Deployments
+    parameters:
+      - $ref: ../parameters/deploymentId.yaml
+      - $ref: ../parameters/idList.yaml
+      ...
+      - $ref: ../parameters/recursive.yaml          ← present here
+        description: If true, instructs the server to include nested
+                     subdeployments, recursively.
+
+KEY POINT — second paragraph of the description:
+  "individual members can also be retrieved by ID directly at the canonical
+  `Deployment` resources endpoint."
+
+This is the spec authority for D2 (live test T6). The spec EXPLICITLY
+guarantees that subdeployments are retrievable from the canonical
+/deployments endpoint by ID. cs-go's `parent_deployment_id IS NULL` filter
+on /deployments?id= violates this guarantee for the list-style identifier
+filter.
+
+==============================================================================
+6. CONSOLIDATED SPEC CONCLUSION
+==============================================================================
+
+The OAS for /deployments is deliberately different from /systems:
+
+                    | /systems                | /deployments
+  --------------------|-------------------------|----------------------------
+  Description        | "By default, only top   | "List or search all
+                     |  level systems are      |  Deployment resources"
+                     |  included"              |
+  recursive param    | YES (override)          | NO
+  parent param       | YES                     | YES
+  spec guarantees    | (none about ID lookup)  | "individual members can
+  on canonical                                  |  also be retrieved by ID
+  endpoint                                      |  directly at the canonical
+                                                |  Deployment resources
+                                                |  endpoint"
+                                                | (from subdeployments.yaml)
+
+The asymmetry is consistent — both the description language AND the
+parameter list omit the top-level-only mechanism for /deployments.
+
+The spec for /deployments is therefore:
+  - Default = flat listing of all deployments (no nesting filter).
+  - ?parent=X = filter to deployments whose parent is in X.
+  - canonical /deployments?id=Y MUST be able to return any deployment
+    by Y, including subdeployments (per subdeployments.yaml note).
+  - There is no `recursive` parameter at this endpoint per spec.
+
+cs-go currently:
+  - Default = top-level only (NON-SPEC).
+  - ?parent=X at top level = always 0 (logic conflict).
+  - canonical /deployments?id=child-uri = 0 for subdeployments
+    (violates the spec note).
+  - ?recursive=true returns all (de-facto extension; not in spec).
+
+This is a genuine spec-conformance gap, not a stylistic preference.

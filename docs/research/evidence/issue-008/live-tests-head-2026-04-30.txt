@@ -1,0 +1,124 @@
+Issue #8 — Live tests against HEAD
+Date: 2026-04-30
+Endpoint: https://129-80-248-53.sslip.io/csapi-go-head/
+Tooling: curl.exe (PowerShell)
+
+==============================================================================
+SETUP
+==============================================================================
+
+Created one System (urn:test:issue8:sys:1) for deployedSystems@link.
+
+Created one parent Deployment via canonical endpoint:
+  POST /deployments
+  → 201, id = 94a877fe-eaf4-4430-9dd4-00e42064c77d
+        uid = urn:test:issue8:dep:parent
+
+Created one child Deployment via spec subdeployments endpoint:
+  POST /deployments/94a877fe-eaf4-4430-9dd4-00e42064c77d/subdeployments
+  → 201, Location: /deployments/716d3cd2-b075-424c-a70b-5bce1b0514b0
+        uid = urn:test:issue8:dep:child
+
+==============================================================================
+T1 — GET /deployments  (default)
+==============================================================================
+
+Request:  GET /deployments?limit=20
+Result:   numberMatched = 1
+          features[0]: uid=urn:test:issue8:dep:parent
+
+VERDICT: Confirms cs-go applies the top-level-only filter at default.
+         Subdeployment is invisible at canonical listing endpoint.
+
+==============================================================================
+T2 — GET /deployments?recursive=true
+==============================================================================
+
+Request:  GET /deployments?recursive=true&limit=20
+Result:   numberMatched = 2
+          features[0]: uid=urn:test:issue8:dep:parent
+          features[1]: uid=urn:test:issue8:dep:child
+
+VERDICT: Issue body claims this branch is a no-op. CONTRADICTED.
+         Empty branch correctly omits the parent_deployment_id IS NULL
+         clause, returning all deployments.
+
+         Note: `recursive` is NOT a spec parameter at /deployments per
+         the canonical OAS. cs-go's behavior here is a de-facto extension.
+
+==============================================================================
+T3 — GET /deployments?parent={parentId}  (top-level, no recursive)
+==============================================================================
+
+Request:  GET /deployments?parent=94a877fe-eaf4-4430-9dd4-00e42064c77d&limit=20
+Result:   numberMatched = 0
+
+VERDICT: NEW DEFECT (not documented in issue #8). The spec parameter
+         `parent` MUST return resources whose parent matches. Live result
+         is empty.
+
+         Static-analysis root cause: the if-len(params.Parent) clause adds
+         WHERE parent_deployment_id IN (parentId), and the else branch
+         (no parentId path arg, no Recursive) ALSO adds
+         WHERE parent_deployment_id IS NULL. AND'd → impossible.
+
+         Reference: spec parameters/parentIdList.yaml.
+
+==============================================================================
+T4 — GET /deployments/{parentId}/subdeployments
+==============================================================================
+
+Request:  GET /deployments/94a877fe-eaf4-4430-9dd4-00e42064c77d/subdeployments?limit=20
+Result:   numberMatched = 1
+          features[0]: uid=urn:test:issue8:dep:child
+
+VERDICT: Subdeployments endpoint works correctly.
+
+==============================================================================
+T5 — GET /deployments/{childId}  (direct retrieval by ID)
+==============================================================================
+
+Request:  GET /deployments/716d3cd2-b075-424c-a70b-5bce1b0514b0
+Result:   id = 716d3cd2-..., uid = urn:test:issue8:dep:child
+
+VERDICT: Direct retrieval works. Subdeployment exists in the database
+         and is reachable when queried by URL path.
+
+==============================================================================
+T6 — GET /deployments?id=<child-uri>  (canonical ID-list filter)
+==============================================================================
+
+Request:  GET /deployments?id=urn:test:issue8:dep:child&limit=20
+Result:   numberMatched = 0
+
+VERDICT: NEW DEFECT (not documented in issue #8). The canonical spec
+         filter `?id=` (which accepts both local IDs and URIs — see
+         issue #7) MUST return matching resources. Live result is empty
+         for a subdeployment whose URI is supplied.
+
+         This DIRECTLY violates the spec note in
+         paths/subdeployments.yaml:
+            "individual members can also be retrieved by ID directly
+             at the canonical `Deployment` resources endpoint"
+
+         Static-analysis root cause: the `?id=` clause adds
+         WHERE id IN ? OR unique_identifier IN ?, and the same code
+         path adds WHERE parent_deployment_id IS NULL. AND'd → empty.
+
+==============================================================================
+SUMMARY TABLE
+==============================================================================
+
+  Test  Request                                    Result   Verdict
+  ----  -----------------------------------------  -------  -------------
+  T1    GET /deployments                           1        Confirms top-level-only filter
+  T2    GET /deployments?recursive=true            2        Contradicts issue's "no-op" claim
+  T3    GET /deployments?parent={parentId}         0        New defect — logic conflict
+  T4    GET /deployments/{parentId}/subdeployments 1        Works
+  T5    GET /deployments/{childId}                 found    Works
+  T6    GET /deployments?id=<child-uri>            0        New defect — violates spec note
+
+T1, T3, T6 are all consequences of the same WHERE clause:
+  query.Where("parent_deployment_id IS NULL OR parent_deployment_id = ''")
+applied unconditionally at the default top-level branch. Removing that
+clause (Option A from the issue) fixes all three simultaneously.
