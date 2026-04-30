@@ -1,0 +1,78 @@
+===datarecord branch in validateDataComponentValue===
+	case "datarecord":
+		obj, ok := value.(map[string]any)
+		if !ok {
+			return fmt.Errorf("%s must be an object", path)
+		}
+		for _, field := range component.Fields {
+			if field.Name == "" {
+				continue
+			}
+			fieldVal, exists := obj[field.Name]
+			if !exists {
+				if field.Optional != nil && *field.Optional {
+					continue
+				}
+				return fmt.Errorf("%s.%s is required by datastream schema", path, field.Name)
+			}
+			if err := validateDataComponentValue(&field.DatastreamDataComponent, fieldVal, path+"."+field.Name); err != nil {
+				return err
+			}
+		}
+		return nil
+
+	case "vector":
+		// Vectors are commonly encoded as objects in this API.
+		obj, ok := value.(map[string]any)
+		if !ok {
+			return fmt.Errorf("%s must be an object for Vector schema", path)
+		}
+		for _, coord := range component.Coordinates {
+			if coord.Name == "" {
+				continue
+			}
+			coordVal, exists := obj[coord.Name]
+			if !exists {
+				if coord.Optional != nil && *coord.Optional {
+					continue
+				}
+				return fmt.Errorf("%s.%s is required by datastream vector schema", path, coord.Name)
+			}
+			if err := validateDataComponentValue(&coord.DatastreamDataComponent, coordVal, path+"."+coord.Name); err != nil {
+				return err
+			}
+		}
+		return nil
+
+	case "dataarray", "matrix":
+		arr, ok := value.([]any)
+		if !ok {
+			return fmt.Errorf("%s must be an array", path)
+		}
+		if component.ElementType != nil {
+			for i, item := range arr {
+				if err := validateDataComponentValue(&component.ElementType.DatastreamDataComponent, item, fmt.Sprintf("%s[%d]", path, i)); err != nil {
+					return err
+				}
+			}
+		}
+		return nil
+
+	case "datachoice":
+
+===Optional / MinOccurs in datastream model===
+50:	// Optional normalized IDs retained server-side for easier joins/filtering.
+225:	Optional  *bool `json:"optional,omitempty"`
+
+===Optional consumers in api===
+internal/api/observation_schema_validation.go:92:				if field.Optional != nil && *field.Optional {
+internal/api/observation_schema_validation.go:115:				if coord.Optional != nil && *coord.Optional {
+
+===Strict JSON / unknown field handling===
+
+===observation handler decode path===
+internal/api/observation_handler.go:209:	if err := json.NewDecoder(r.Body).Decode(&raw); err != nil {
+internal/api/observation_handler.go:222:		if err := json.Unmarshal(procBytes, &procLink); err != nil || procLink.Href == "" {
+internal/api/observation_handler.go:263:		if err := json.Unmarshal(b, &resultLink); err != nil || resultLink.Href == "" {
+internal/api/observation_schema_validation.go:58:	if err := json.Unmarshal(obs.Result, &value); err != nil {
+internal/api/observation_schema_validation.go:220:	if err := json.Unmarshal(obs.Result, &result); err != nil {

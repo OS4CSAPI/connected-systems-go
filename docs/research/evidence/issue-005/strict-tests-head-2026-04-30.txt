@@ -1,0 +1,40 @@
+=== System ===
+SYS=882aef1c-f3ae-4dca-b0cc-0dcf3dbf47ed
+
+=== DS_ALLREQ ΓÇö 6-field schema with NO optional flags (publisher's original schema) ===
+DS_ALLREQ=33836d8d-ec98-4af3-9f3c-ee5ead65b705
+
+=== DS_TS_OPT ΓÇö same schema but timestamp marked optional:true ===
+DS_TS_OPT=a5f62ec6-eebf-4d97-939b-6e904183f714
+
+=== T1 publisher payload (no timestamp) on DS_ALLREQ ΓÇö expect 400 ===
+{"error":"Observation does not match parent datastream schema: result.timestamp is required by datastream schema"}
+
+  [code=400]
+
+=== T2 publisher payload (no timestamp) on DS_TS_OPT ΓÇö expect 201 ===
+
+  [code=201]
+
+=== T3 GET DS_TS_OPT ΓÇö does optional:true round-trip? ===
+timestamp -> True
+latitude -> (absent)
+longitude -> (absent)
+altitude -> (absent)
+heading -> (absent)
+velocity -> (absent)
+
+=== T4 publisher workaround (all fields) on DS_ALLREQ ΓÇö expect 201 ===
+
+  [code=201]
+
+=== T5 extra undeclared field ΓÇö expect 201 (open schema) ===
+
+  [code=201]
+
+=== T6 typo "latitudee" ΓÇö expect 400 latitude required (typo accepted as extra) ===
+{"error":"Observation does not match parent datastream schema: result.latitude is required by datastream schema"}
+
+  [code=400]
+
+===END issue5 tests===
