@@ -1,0 +1,93 @@
+=== HEAD datastreams table (csapi-head, fresh DB initialized by 4b99421 code) ===
+                              Table "public.datastreams"
+          Column          |           Type           | Collation | Nullable | Default 
+--------------------------+--------------------------+-----------+----------+---------
+ id                       | character varying(255)   |           | not null | 
+ created_at               | timestamp with time zone |           |          | 
+ updated_at               | timestamp with time zone |           |          | 
+ name                     | character varying(255)   |           | not null | 
+ description              | text                     |           |          | 
+ valid_time_start         | timestamp with time zone |           |          | 
+ valid_time_end           | timestamp with time zone |           |          | 
+ formats                  | jsonb                    |           |          | 
+ system_link              | jsonb                    |           |          | 
+ output_name              | character varying(255)   |           |          | 
+ procedure_link           | jsonb                    |           |          | 
+ deployment_link          | jsonb                    |           |          | 
+ feature_of_interest      | jsonb                    |           |          | 
+ sampling_feature_link    | jsonb                    |           |          | 
+ observed_properties      | jsonb                    |           |          | 
+ phenomenon_time_start    | timestamp with time zone |           |          | 
+ phenomenon_time_end      | timestamp with time zone |           |          | 
+ phenomenon_time_interval | character varying(64)    |           |          | 
+ result_time_start        | timestamp with time zone |           |          | 
+ result_time_end          | timestamp with time zone |           |          | 
+ result_time_interval     | character varying(64)    |           |          | 
+ type                     | character varying(32)    |           |          | 
+ result_type              | character varying(32)    |           |          | 
+ live                     | boolean                  |           |          | 
+ schema                   | jsonb                    |           |          | 
+ links                    | jsonb                    |           |          | 
+ system_id                | character varying(255)   |           |          | 
+ procedure_id             | character varying(255)   |           |          | 
+ deployment_id            | character varying(255)   |           |          | 
+ feature_of_interest_id   | character varying(255)   |           |          | 
+ sampling_feature_id      | character varying(255)   |           |          | 
+Indexes:
+    "datastreams_pkey" PRIMARY KEY, btree (id)
+    "idx_datastreams_deployment_id" btree (deployment_id)
+    "idx_datastreams_feature_of_interest_id" btree (feature_of_interest_id)
+    "idx_datastreams_procedure_id" btree (procedure_id)
+    "idx_datastreams_sampling_feature_id" btree (sampling_feature_id)
+    "idx_datastreams_system_id" btree (system_id)
+Referenced by:
+    TABLE "system_datastreams" CONSTRAINT "fk_system_datastreams_datastream" FOREIGN KEY (datastream_id) REFERENCES datastreams(id)
+
+
+=== production datastreams table (running pre-1562201 code) ===
+                              Table "public.datastreams"
+          Column          |           Type           | Collation | Nullable | Default 
+--------------------------+--------------------------+-----------+----------+---------
+ id                       | character varying(255)   |           | not null | 
+ created_at               | timestamp with time zone |           |          | 
+ updated_at               | timestamp with time zone |           |          | 
+ unique_identifier        | character varying(255)   |           |          | 
+ name                     | character varying(255)   |           | not null | 
+ description              | text                     |           |          | 
+ valid_time_start         | timestamp with time zone |           |          | 
+ valid_time_end           | timestamp with time zone |           |          | 
+ formats                  | jsonb                    |           |          | 
+ system_link              | jsonb                    |           |          | 
+ output_name              | character varying(255)   |           |          | 
+ procedure_link           | jsonb                    |           |          | 
+ deployment_link          | jsonb                    |           |          | 
+ feature_of_interest      | jsonb                    |           |          | 
+ sampling_feature_link    | jsonb                    |           |          | 
+ observed_properties      | jsonb                    |           |          | 
+ phenomenon_time_start    | timestamp with time zone |           |          | 
+ phenomenon_time_end      | timestamp with time zone |           |          | 
+ phenomenon_time_interval | character varying(64)    |           |          | 
+ result_time_start        | timestamp with time zone |           |          | 
+ result_time_end          | timestamp with time zone |           |          | 
+ result_time_interval     | character varying(64)    |           |          | 
+ type                     | character varying(32)    |           |          | 
+ result_type              | character varying(32)    |           |          | 
+ live                     | boolean                  |           |          | 
+ schema                   | jsonb                    |           |          | 
+ links                    | jsonb                    |           |          | 
+ system_id                | character varying(255)   |           |          | 
+ procedure_id             | character varying(255)   |           |          | 
+ deployment_id            | character varying(255)   |           |          | 
+ feature_of_interest_id   | character varying(255)   |           |          | 
+ sampling_feature_id      | character varying(255)   |           |          | 
+Indexes:
+    "datastreams_pkey" PRIMARY KEY, btree (id)
+    "idx_datastreams_deployment_id" btree (deployment_id)
+    "idx_datastreams_feature_of_interest_id" btree (feature_of_interest_id)
+    "idx_datastreams_procedure_id" btree (procedure_id)
+    "idx_datastreams_sampling_feature_id" btree (sampling_feature_id)
+    "idx_datastreams_system_id" btree (system_id)
+    "idx_datastreams_unique_identifier" UNIQUE, btree (unique_identifier)
+Referenced by:
+    TABLE "system_datastreams" CONSTRAINT "fk_system_datastreams_datastream" FOREIGN KEY (datastream_id) REFERENCES datastreams(id)
+

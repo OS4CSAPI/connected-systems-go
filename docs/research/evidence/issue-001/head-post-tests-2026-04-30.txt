@@ -1,0 +1,111 @@
+Using SYS_ID=666ed3fe-bccf-4670-bb85-a0a3c4562772
+
+=== T4: POST /systems/666ed3fe-bccf-4670-bb85-a0a3c4562772/datastreams (NO uid in body) - first create ===
+HTTP/2 201 
+access-control-allow-headers: Authorization, Content-Type, Accept
+access-control-allow-methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+access-control-allow-origin: *
+access-control-max-age: 86400
+alt-svc: h3=":443"; ma=2592000
+date: Thu, 30 Apr 2026 17:23:15 GMT
+location: https://129-80-248-53.sslip.io/csapi-go-head/datastreams/968fa82e-e4a2-4637-b495-a2d71b094d01
+vary: Origin
+via: 1.1 Caddy
+content-length: 0
+
+
+=== T5: same POST a SECOND time ===
+HTTP/2 201 
+access-control-allow-headers: Authorization, Content-Type, Accept
+access-control-allow-methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+access-control-allow-origin: *
+access-control-max-age: 86400
+alt-svc: h3=":443"; ma=2592000
+date: Thu, 30 Apr 2026 17:23:16 GMT
+location: https://129-80-248-53.sslip.io/csapi-go-head/datastreams/f7fe3362-34e5-4208-b7fb-f0187ae9e6aa
+vary: Origin
+via: 1.1 Caddy
+content-length: 0
+
+
+=== T6: POST with stray top-level 'uid' field ===
+HTTP/2 201 
+access-control-allow-headers: Authorization, Content-Type, Accept
+access-control-allow-methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+access-control-allow-origin: *
+access-control-max-age: 86400
+alt-svc: h3=":443"; ma=2592000
+date: Thu, 30 Apr 2026 17:23:16 GMT
+location: https://129-80-248-53.sslip.io/csapi-go-head/datastreams/cd32a665-94f7-46a9-b879-aef7176e2ea7
+vary: Origin
+via: 1.1 Caddy
+content-length: 0
+
+
+=== T7: GET /datastreams - inspect returned body shape ===
+count: 6
+  --- item ---
+  id: cf4cd80c-ddc1-4470-815c-292a68463f3e
+  name: DS without uid A
+  uid present: False | value: None
+  keys: ['Systems', 'description', 'id', 'links', 'live', 'name', 'observedProperties', 'outputName', 'resultType', 'system@link']
+  --- item ---
+  id: e4edced2-8fda-450a-9d70-3f10d93eeefb
+  name: DS without uid A
+  uid present: False | value: None
+  keys: ['Systems', 'description', 'id', 'links', 'live', 'name', 'observedProperties', 'outputName', 'resultType', 'system@link']
+  --- item ---
+  id: 186b7853-786a-44d3-9489-bfe5c4f891e9
+  name: DS C with stray uid
+  uid present: False | value: None
+  keys: ['Systems', 'id', 'links', 'live', 'name', 'observedProperties', 'outputName', 'resultType', 'system@link']
+  --- item ---
+  id: 968fa82e-e4a2-4637-b495-a2d71b094d01
+  name: DS without uid A
+  uid present: False | value: None
+  keys: ['Systems', 'description', 'id', 'links', 'live', 'name', 'observedProperties', 'outputName', 'resultType', 'system@link']
+  --- item ---
+  id: f7fe3362-34e5-4208-b7fb-f0187ae9e6aa
+  name: DS without uid A
+  uid present: False | value: None
+  keys: ['Systems', 'description', 'id', 'links', 'live', 'name', 'observedProperties', 'outputName', 'resultType', 'system@link']
+  --- item ---
+  id: cd32a665-94f7-46a9-b879-aef7176e2ea7
+  name: DS C with stray uid
+  uid present: False | value: None
+  keys: ['Systems', 'id', 'links', 'live', 'name', 'observedProperties', 'outputName', 'resultType', 'system@link']
+
+=== T8: DB schema - datastreams table columns at HEAD ===
+Did not find any relation named "data_streams".
+
+(If table is named differently:)
+                        List of tables
+  Schema  |              Name               | Type  |  Owner   
+----------+---------------------------------+-------+----------
+ public   | collections                     | table | postgres
+ public   | commands                        | table | postgres
+ public   | control_streams                 | table | postgres
+ public   | datastreams                     | table | postgres
+ public   | deployment_closures             | table | postgres
+ public   | deployments                     | table | postgres
+ public   | features                        | table | postgres
+ public   | observations                    | table | postgres
+ public   | procedure_controlled_properties | table | postgres
+ public   | procedure_observed_properties   | table | postgres
+ public   | procedures                      | table | postgres
+ public   | properties                      | table | postgres
+ public   | sampling_features               | table | postgres
+ public   | spatial_ref_sys                 | table | postgres
+ public   | system_controlstreams           | table | postgres
+ public   | system_datastreams              | table | postgres
+ public   | system_deployments              | table | postgres
+ public   | system_events                   | table | postgres
+ public   | system_history_revisions        | table | postgres
+ public   | system_procedures               | table | postgres
+ public   | systems                         | table | postgres
+ tiger    | addr                            | table | postgres
+ tiger    | addrfeat                        | table | postgres
+ tiger    | bg                              | table | postgres
+ tiger    | county                          | table | postgres
+ tiger    | county_lookup                   | table | postgres
+ tiger    | countysub_lookup                | table | postgres
