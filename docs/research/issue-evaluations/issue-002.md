@@ -337,12 +337,9 @@ Optional: add `cascade=true` support to `DeploymentRepository.Delete` (§2.6).
 
 ## 8. Follow-up surfaces uncovered by this evaluation
 
-These are candidates for new issues, NOT yet filed (per phase-7 process — review at end of pass before deciding which to file):
+Filed upstream:
 
-1. **`?cascade=true` is non-functional on Datastream and System** (§2.5). Severity P1: the only documented mitigation in code does not work. Title candidate: `[bug] DELETE /datastreams/{id}?cascade=true returns 500 — cascade impl does not clear system_datastreams m2m join`.
-2. **Generic 500 mapping for all DB errors in 12 DELETE handlers** (§2.1, §2.4). Severity P2 (UX/observability). Title candidate: `[enhancement] DELETE handlers should map FK violation (SQLSTATE 23503) to 409 and missing rows to 404`.
-3. **`DeploymentRepository.Delete` has no cascade parameter** (§2.6). Severity P2. Title candidate: `[bug] DELETE /deployments/{id} cannot remove a deployment that has been linked to a system`.
-4. **Silent orphaning of observations when datastream has no m2m join** (§2.3). Severity P2 (data-integrity). Title candidate: `[bug] DELETE /datastreams/{id} silently orphans child observations when datastream has no system association (no FK on observations.datastream_id)`.
-5. **m2m join-FK side-effect on commands too** — by symmetry with §2.3, deleting a control_stream that's linked to a system will hit `fk_system_controlstreams_control_stream` and the cascade impl in `control_stream_repository.go` has the same shape (verified statically in `static-analysis-source-2026-04-30.txt`). Could fold into #1 above.
+- **#16** — [bug] DELETE cascade is broken across resource types — m2m join FKs not cleaned, and natural parent→child relations have no FK at all. Umbrella covering: (a) `?cascade=true` non-functional on Datastream/System/ControlStream (§2.5), (b) `DeploymentRepository.Delete` has no cascade param at all (§2.6), (c) silent orphaning of un-FK'd children (§2.3).
+- **#17** — [enhancement] All 12 DELETE handlers map every repository error to HTTP 500 — should distinguish 404 / 409 / 400 / 500 (§2.1, §2.4).
 
-A single combined umbrella issue covering #1+#3+#5 ("DELETE cascade is broken across resource types — m2m join FKs not cleaned") may be more actionable than three separate issues.
+A comment summarising the verdict matrix and pointing at the evaluation record + #16 + #17 has also been posted on #2 itself.
