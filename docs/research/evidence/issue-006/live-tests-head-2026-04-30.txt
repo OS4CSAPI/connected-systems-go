@@ -1,0 +1,108 @@
+Issue #6 — live tests on HEAD (commit 4b994212), 2026-04-30
+============================================================
+Endpoint: https://129-80-248-53.sslip.io/csapi-go-head/
+
+T1: GET /datastreams?limit=1
+----------------------------
+Response (formatted):
+{
+  "items": [{
+    "id": "cf4cd80c-ddc1-4470-815c-292a68463f3e",
+    "name": "DS without uid A",
+    "description": "first create no uid",
+    "system@link": { "href": "systems/666ed3fe-bccf-4670-bb85-a0a3c4562772" },
+    "outputName": "temperature",
+    "observedProperties": [{
+      "definition": "http://example.org/prop/temperature",
+      "label": "Temperature"
+    }],
+    "resultType": "Measure",
+    "live": false,
+    "links": [
+      { "href": "https://129-80-248-53.sslip.io/csapi-go-head/systems/666ed3fe-bccf-4670-bb85-a0a3c4562772",
+        "rel":  "ogc-rel:systems" },
+      { "href": "https://129-80-248-53.sslip.io/csapi-go-head/datastreams/cf4cd80c-ddc1-4470-815c-292a68463f3e/observations",
+        "rel":  "ogc-rel:observations" }
+    ],
+    "Systems": null      # <-- capital-S leak (already tracked in issue #1 §7.8)
+  }],
+  "links": [...]
+}
+
+Findings T1:
+  (a) `system@link` is emitted as a JSON object with a single `href` property — spec
+      compliant (only `href` is required), but minimal: no rel/type/title/uid.
+  (b) `system@link.href` is RELATIVE: "systems/<uuid>". Spec declares
+      `format: uri` (typically absolute) with absolute example.
+  (c) `system@id` is NOT emitted (matches spec — that field is not defined on
+      Datastream).
+  (d) `links[]` array DOES include an absolute URL pointing at the parent system
+      with `rel: "ogc-rel:systems"` — a second discoverability path for clients.
+  (e) Capital-S `Systems":null` leak is still present (not the focus here, tracked
+      separately).
+
+T2: GET /systems?limit=1
+------------------------
+{
+  "type": "FeatureCollection",
+  "features": [{
+    "type": "Feature",
+    "id": "666ed3fe-bccf-4670-bb85-a0a3c4562772",
+    "geometry": null,
+    "properties": {
+      "uid": "urn:test:issue1:sys:1",
+      "name": "Issue1 test sys",
+      "featureType": "http://www.w3.org/ns/sosa/Sensor"
+    },
+    "links": [
+      { "href": "https://129-80-248-53.sslip.io/csapi-go-head/systems/.../datastreams",
+        "rel":  "ogc-rel:datastreams" }
+    ]
+  }],
+  ...
+}
+
+Findings T2:
+  System resources have no parent ref in their JSON body — they are root resources.
+  Children (datastreams) are discoverable via `links[]` with `rel:ogc-rel:datastreams`.
+
+T3: GET /observations?limit=1
+-----------------------------
+{
+  "items": [{
+    "id": "17a6829b-f61e-4c8b-89ae-004c2d6fde71",
+    "datastream@id": "b93d0040-6f69-4874-9d2b-f488b96a9fb3",
+    "phenomenonTime": "2026-04-30T17:00:00Z",
+    "resultTime":     "2026-04-30T17:00:00Z",
+    "result": 42
+  }],
+  ...
+}
+
+Findings T3:
+  (a) Observation uses FLAT `datastream@id` (string), not `datastream@link` —
+      matches spec (line 2602).
+  (b) No `system@link` or `system@id` on the observation — system reachable only
+      via the parent datastream (transitively).
+  (c) No `links[]` array on the observation item itself in this response shape
+      (only on the collection envelope).
+
+Summary
+-------
+cs-go HEAD emits cross-resource references EXACTLY per OGC 23-002:
+  - Datastream/ControlStream parent: `system@link` (object)  ✅
+  - Observation/Command parent:      `datastream@id` / `controlstream@id` (string) ✅
+  - In-collection sibling refs:      `samplingFeature@id` (string) on obs/cmd  ✅
+  - Cross-collection refs:           `procedure@link` (object) on obs/cmd  ✅
+
+Two minor conformance/UX gaps observed:
+  G1: `system@link.href` is a relative path; spec example is absolute URI.
+  G2: `system@link` carries only `href` (no rel/type/title/uid) — minimal but
+      still spec-compliant. Adding type/title would help client UX without
+      changing conformance.
+
+The premise of issue #6 (and the SensorHub interop comparison) is INVERTED:
+SensorHub's `system@id`-on-datastream is the non-conformant shape; cs-go's
+`system@link`-on-datastream is the conformant shape. The correct fix for
+client interop is on the CLIENT side (already done in ogc-client-CSAPI_2 #166)
+or on SensorHub. cs-go should NOT add `system@id` on Datastream/ControlStream.

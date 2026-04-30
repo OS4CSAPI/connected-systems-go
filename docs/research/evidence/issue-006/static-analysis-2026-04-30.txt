@@ -1,0 +1,117 @@
+Issue #6 — static analysis on HEAD (commit 4b994212)
+======================================================
+
+1. Spec inventory: cross-resource ref fields in OGC 23-002 (.tmp-csapi-part2.yaml)
+   ------------------------------------------------------------------------------
+   @link (object, with required `href`):
+     - line  312 datastream.system@link
+     - line  376 datastream.procedure@link
+     - line  383 datastream.deployment@link
+     - line  390 datastream.featureOfInterest@link
+     - line  397 datastream.samplingFeature@link
+     - line 2611 observation.procedure@link
+     - line 2635 observation.result@link
+     - line 3124 controlstream.system@link
+     - line 3135 controlstream.procedure@link
+     - line 3142 controlstream.deployment@link
+     - line 3149 controlstream.featureOfInterest@link
+     - line 3156 controlstream.samplingFeature@link
+     - line 4062 command.procedure@link
+     - line 4571 commandStatus.observation@link / observationSet@link / datastream@link / external@link
+     - line 6413 system.systemKind@link
+     - (deployment.platform@link, deployment.deployedSystems@link in Part1 model)
+     - (samplingFeature.sampledFeature@link in model)
+
+   @id (flat string, in-collection ID):
+     - line 2602 observation.datastream@id        (REQUIRED in observation.required)
+     - line 2607 observation.samplingFeature@id   (optional)
+     - line 4053 command.controlstream@id         (REQUIRED in command.required)
+     - line 4058 command.samplingFeature@id       (optional)
+     - line 4504 commandStatus.command@id         (REQUIRED)
+
+   PATTERN: @link is used for parent/hierarchical/cross-collection refs that may carry
+   metadata (rel, type, title, uid, hreflang, rt, if). @id is used for the immediate
+   parent of a sub-resource where the parent collection is fixed by context
+   (Observation always belongs to a Datastream; Command always belongs to a ControlStream).
+
+   IMPORTANT: there is NO `system@id` field defined for Datastream or ControlStream
+   in OGC 23-002. The flat `system@id` shape used by OSH SensorHub at the datastream
+   level is non-conformant with this spec.
+
+2. Server model field tags (internal/model/domains/*.go)
+   -----------------------------------------------------
+   datastream.go:25     SystemLink          *Link    json:"system@link,omitempty"
+   datastream.go:27..30 ProcedureLink/DeploymentLink/FeatureOfInterest/SamplingFeatureLink
+                                                     json:"procedure@link"|"deployment@link"|...
+   control_stream.go:24..29   matching @link fields
+   observation.go:14    DatastreamID      string    json:"datastream@id"
+   observation.go:15    SamplingFeatureID *string   json:"samplingFeature@id,omitempty"
+   observation.go:16    ProcedureLink     *Link     json:"procedure@link,omitempty"
+   command.go:29        ControlStreamID   string    json:"controlstream@id"
+   command.go:30        SamplingFeatureID *string   json:"samplingFeature@id,omitempty"
+   command.go:31        ProcedureLink     *Link     json:"procedure@link,omitempty"
+   deployment.go:76     Platform          *Link     json:"platform@link,omitempty"
+   deployment.go:77     DeployedSystems   Links     json:"deployedSystems@link,omitempty"
+   sampling_feature.go:27/71  SampledFeatureLink *Link  json:"sampledFeature@link,omitempty"
+   system.go:115        SystemKind        *Link     json:"systemKind@link,omitempty"
+
+   VERDICT: cs-go's model exactly mirrors the OGC 23-002 cross-reference contract.
+   No `system@id` field exists on Datastream or ControlStream models — emitting one
+   would require either a non-spec extension field or replacing the canonical
+   `system@link` (which would itself be non-conformant).
+
+3. Link struct (internal/model/common_shared/links.go:35)
+   ----------------------------------------------------
+   type Link struct {
+       Href  string  `json:"href"`
+       Rel   string  `json:"rel,omitempty"`
+       Type  string  `json:"type,omitempty"`
+       Title string  `json:"title,omitempty"`
+       UID   *string `json:"uid,omitempty"`
+   }
+   - Spec allows hreflang, rt, if (RFC 6690) — model omits these (lossy on round-trip).
+   - Only `href` is required by spec (line 318: `required: &ref_11 - href`).
+
+4. Datastream serialization helper (json_formatters/datastream_json.go:62-86)
+   --------------------------------------------------------------------------
+   appendDatastreamAssociationLinks() emits:
+     - `system@link` (object) — preserved from model field, set on POST
+     - `links[]` array — adds an additional ogc-rel:systems link with absolute URL
+       (Href: formaters.ToFunctionalAssociationHref("/systems/"+*ds.SystemID))
+     - `links[]` — also adds ogc-rel:observations entry
+   Result: clients have TWO ways to reach the parent system on a datastream:
+     a. ds.system@link.href (relative path "systems/<uuid>") — spec-mandated
+     b. ds.links[ rel="ogc-rel:systems" ].href (absolute URL) — derived
+   `system@id` is not emitted.
+
+5. Comparative: OSH SensorHub
+   ---------------------------
+   Per the issue body, SensorHub emits `"system@id": "<uuid>"` on datastreams and
+   does NOT emit `system@link`. Per the OGC 23-002 schema inspection above, this
+   is non-conformant: the field name `system@id` does not exist in the datastream
+   schema, and the conformant field `system@link` is missing.
+
+   Cross-fork: parent fork SomethingCreativeStudios/connected-systems-go ships
+   the same observation/datastream model field tags (verified in earlier issue-001
+   evidence: parent file shas match cs-go HEAD).
+
+6. Open spec questions
+   --------------------
+   Q4 (issue): href format — relative path vs absolute URL?
+   Spec line 318-322:
+       href:
+         description: URL of target resource
+         type: string
+         format: uri
+         examples:
+           - https://data.example.com/link/to/resource
+   `format: uri` (RFC 3986) typically connotes absolute URI. cs-go emits
+   `"systems/<uuid>"` (relative-reference). RFC 3986 §5 defines reference
+   resolution rules using a base URI; clients can resolve. Strict OAS validators
+   may flag relative as a `format: uri` violation. This is a minor conformance
+   gap, candidate for a P3 follow-up.
+
+   Q3 (issue): emit BOTH @id and @link on Datastream/ControlStream?
+   Spec defines only `@link` for these resources — adding `system@id` would be
+   a non-spec extension property. Recommendation: do NOT. Client-side parsers
+   should be updated to read `@link.href` (already done in ogc-client-CSAPI_2 #166).
