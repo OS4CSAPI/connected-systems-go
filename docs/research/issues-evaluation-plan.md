@@ -144,7 +144,7 @@ records are the source of truth as evaluations land.
 
 | # | State | Title (verbatim) | Eval status | Verdict | Record |
 |---|---|---|---|---|---|
-| 1 | open | Datastream creation without explicit `uid` stores empty string, violates unique constraint on second create | not-started | — | — |
+| 1 | open | Datastream creation without explicit `uid` stores empty string, violates unique constraint on second create | complete | Validity: partially-confirmed · Legitimacy: defect · Accuracy: accurate (stale) · Completeness: complete · **Rec: Keep with edits** | [issue-001.md](issue-evaluations/issue-001.md) |
 | 2 | open | DELETE on parent resources fails with raw PostgreSQL FK constraint error instead of cascading or returning structured error | not-started | — | — |
 | 3 | open | Research: Time field encoding — strict ISO 8601 string requirement vs. numeric timestamp acceptance | not-started | — | — |
 | 4 | open | Research: NaN handling for numeric observation fields — rejection vs. nilValue support | not-started | — | — |
@@ -182,3 +182,6 @@ records are the source of truth as evaluations land.
 
 - **2026-04-30** — Plan created. 12 issues open at start (#1–#12). No
   evaluations begun.
+- **2026-04-30** — Issue #1 evaluated. Verdict: keep with edits. Surfaced a
+  partial-fix-without-closure pattern in commit `1562201` and a compile break in
+  `generators_datastream.go`. Cross-referenced #12 as sibling.
