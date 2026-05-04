@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -17,19 +18,20 @@ import (
 
 // SamplingFeatureHandler handles SamplingFeature resource requests
 type SamplingFeatureHandler struct {
-	cfg    *config.Config
-	logger *zap.Logger
-	repo   *repository.SamplingFeatureRepository
-	fc     *formaters.MultiFormatFormatterCollection[*domains.SamplingFeature]
+	cfg        *config.Config
+	logger     *zap.Logger
+	repo       *repository.SamplingFeatureRepository
+	systemRepo *repository.SystemRepository
+	fc         *formaters.MultiFormatFormatterCollection[*domains.SamplingFeature]
 }
 
 // NewSamplingFeatureHandler creates a new SamplingFeatureHandler
-func NewSamplingFeatureHandler(cfg *config.Config, logger *zap.Logger, repo *repository.SamplingFeatureRepository, fc *formaters.MultiFormatFormatterCollection[*domains.SamplingFeature]) *SamplingFeatureHandler {
-	return &SamplingFeatureHandler{cfg: cfg, logger: logger, repo: repo, fc: fc}
+func NewSamplingFeatureHandler(cfg *config.Config, logger *zap.Logger, repo *repository.SamplingFeatureRepository, systemRepo *repository.SystemRepository, fc *formaters.MultiFormatFormatterCollection[*domains.SamplingFeature]) *SamplingFeatureHandler {
+	return &SamplingFeatureHandler{cfg: cfg, logger: logger, repo: repo, systemRepo: systemRepo, fc: fc}
 }
 
 func (h *SamplingFeatureHandler) ListSamplingFeatures(w http.ResponseWriter, r *http.Request) {
-	params, err := queryparams.SamplingFeatureQueryParams{}.BuildFromRequest(r)
+	params, err := queryparams.SamplingFeatureQueryParams{}.BuildFromRequest(r, h.cfg.API.DefaultLimit)
 
 	if err != nil {
 		h.logger.Error("Failed to parse query parameters", zap.Error(err))
@@ -96,8 +98,7 @@ func (h *SamplingFeatureHandler) CreateSamplingFeature(w http.ResponseWriter, r 
 	sampledFeature, err := h.fc.Deserialize(contentType, r.Body)
 	if err != nil {
 		h.logger.Error("Failed to deserialize sampling feature", zap.Error(err))
-		render.Status(r, http.StatusBadRequest)
-		render.JSON(w, r, map[string]string{"error": "Invalid request body"})
+		writeDeserializeError(w, r, err)
 		return
 	}
 
@@ -111,8 +112,14 @@ func (h *SamplingFeatureHandler) CreateSamplingFeature(w http.ResponseWriter, r 
 	// set the ParentSystemID from the URL param so the created sampling feature
 	// is associated with the parent system.
 	if parentID := chi.URLParam(r, "id"); parentID != "" {
+		// Validate the parent system exists before associating
+		if _, err := h.systemRepo.GetByID(parentID); err != nil {
+			h.logger.Error("Parent system not found", zap.String("systemId", parentID), zap.Error(err))
+			render.Status(r, http.StatusNotFound)
+			render.JSON(w, r, map[string]string{"error": "System not found"})
+			return
+		}
 		sampledFeature.ParentSystemID = &parentID
-
 	}
 
 	if err := h.repo.Create(sampledFeature); err != nil {
@@ -135,8 +142,7 @@ func (h *SamplingFeatureHandler) UpdateSamplingFeature(w http.ResponseWriter, r 
 	sampledFeature, err := h.fc.Deserialize(contentType, r.Body)
 	if err != nil {
 		h.logger.Error("Failed to deserialize sampling feature", zap.Error(err))
-		render.Status(r, http.StatusBadRequest)
-		render.JSON(w, r, map[string]string{"error": "Invalid request body"})
+		writeDeserializeError(w, r, err)
 		return
 	}
 
@@ -160,9 +166,15 @@ func (h *SamplingFeatureHandler) DeleteSamplingFeature(w http.ResponseWriter, r 
 	id := chi.URLParam(r, "id")
 
 	if err := h.repo.Delete(id); err != nil {
-		h.logger.Error("Failed to delete sampling feature", zap.String("id", id), zap.Error(err))
-		render.Status(r, http.StatusInternalServerError)
-		render.JSON(w, r, map[string]string{"error": "Failed to delete sampling feature"})
+		switch {
+		case errors.Is(err, repository.ErrNotFound):
+			render.Status(r, http.StatusNotFound)
+			render.JSON(w, r, map[string]string{"error": "Sampling feature not found"})
+		default:
+			h.logger.Error("Failed to delete sampling feature", zap.String("id", id), zap.Error(err))
+			render.Status(r, http.StatusInternalServerError)
+			render.JSON(w, r, map[string]string{"error": "Failed to delete sampling feature"})
+		}
 		return
 	}
 
@@ -172,7 +184,7 @@ func (h *SamplingFeatureHandler) DeleteSamplingFeature(w http.ResponseWriter, r 
 func (h *SamplingFeatureHandler) GetSystemSamplingFeatures(w http.ResponseWriter, r *http.Request) {
 	systemID := chi.URLParam(r, "id")
 
-	params, err := queryparams.SamplingFeatureQueryParams{}.BuildFromRequest(r)
+	params, err := queryparams.SamplingFeatureQueryParams{}.BuildFromRequest(r, h.cfg.API.DefaultLimit)
 	if err != nil {
 		h.logger.Error("Failed to parse query parameters", zap.Error(err))
 		render.Status(r, http.StatusBadRequest)

@@ -2,7 +2,6 @@ package geojson_formatters
 
 import (
 	"context"
-	"encoding/json"
 	"io"
 
 	"github.com/yourusername/connected-systems-go/internal/model/common_shared"
@@ -53,7 +52,7 @@ func (f *SamplingFeatureGeoJSONFormatter) SerializeAll(ctx context.Context, samp
 				Description:        sf.Description,
 				FeatureType:        sf.FeatureType,
 				ValidTime:          sf.ValidTime,
-				SampledFeatureLink: sf.SampledFeatureLink,
+				SampledFeatureLink: absolutizeLink(sf.SampledFeatureLink),
 			},
 			Links: formaters.AppendSamplingFeatureGeoJSONAssociationLinks(sf),
 		}
@@ -67,14 +66,17 @@ func (f *SamplingFeatureGeoJSONFormatter) SerializeAll(ctx context.Context, samp
 // --- Deserialization ---
 
 func (f *SamplingFeatureGeoJSONFormatter) Deserialize(ctx context.Context, reader io.Reader) (*domains.SamplingFeature, error) {
-	var geoJSON struct {
+	body, err := io.ReadAll(reader)
+	if err != nil {
+		return nil, err
+	}
+	geoJSON, err := common_shared.DecodeWithFieldErrors[struct {
 		Type       string                                   `json:"type"`
 		Properties domains.SamplingFeatureGeoJSONProperties `json:"properties"`
 		Geometry   *common_shared.GoGeom                    `json:"geometry,omitempty"`
 		Links      common_shared.Links                      `json:"links,omitempty"`
-	}
-
-	if err := json.NewDecoder(reader).Decode(&geoJSON); err != nil {
+	}](body)
+	if err != nil {
 		return nil, err
 	}
 
@@ -109,4 +111,14 @@ func (f *SamplingFeatureGeoJSONFormatter) Deserialize(ctx context.Context, reade
 	formaters.ApplySamplingFeatureGeoJSONAssociationLinks(sf, associationLinks)
 
 	return sf, nil
+}
+
+// absolutizeLink returns a copy of the link with an absolute href.
+func absolutizeLink(link *common_shared.Link) *common_shared.Link {
+	if link == nil {
+		return nil
+	}
+	cp := *link
+	cp.Href = formaters.ToFunctionalAssociationHref(cp.Href)
+	return &cp
 }

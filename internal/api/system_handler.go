@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 
@@ -46,7 +47,12 @@ func NewSystemHandler(cfg *config.Config, logger *zap.Logger, repo *repository.S
 
 // ListSystems retrieves a list of systems
 func (h *SystemHandler) ListSystems(w http.ResponseWriter, r *http.Request) {
-	params := queryparams.SystemQueryParams{}.BuildFromRequest(r)
+	params, err := queryparams.SystemQueryParams{}.BuildFromRequest(r, h.cfg.API.DefaultLimit)
+	if err != nil {
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, map[string]string{"error": err.Error()})
+		return
+	}
 
 	systems, total, err := h.repo.List(params)
 	if err != nil {
@@ -98,8 +104,7 @@ func (h *SystemHandler) CreateSystem(w http.ResponseWriter, r *http.Request) {
 	system, err := h.fc.Deserialize(contentType, r.Body)
 	if err != nil {
 		h.logger.Error("Failed to deserialize system", zap.Error(err))
-		render.Status(r, http.StatusBadRequest)
-		render.JSON(w, r, map[string]string{"error": "Invalid request body"})
+		writeDeserializeError(w, r, err)
 		return
 	}
 
@@ -127,8 +132,7 @@ func (h *SystemHandler) UpdateSystem(w http.ResponseWriter, r *http.Request) {
 	system, err := h.fc.Deserialize(contentType, r.Body)
 	if err != nil {
 		h.logger.Error("Failed to deserialize system", zap.Error(err))
-		render.Status(r, http.StatusBadRequest)
-		render.JSON(w, r, map[string]string{"error": "Invalid request body"})
+		writeDeserializeError(w, r, err)
 		return
 	}
 
@@ -153,9 +157,18 @@ func (h *SystemHandler) DeleteSystem(w http.ResponseWriter, r *http.Request) {
 	cascade := r.URL.Query().Get("cascade") == "true"
 
 	if err := h.repo.Delete(id, cascade); err != nil {
-		h.logger.Error("Failed to delete system", zap.String("id", id), zap.Error(err))
-		render.Status(r, http.StatusInternalServerError)
-		render.JSON(w, r, map[string]string{"error": "Failed to delete system"})
+		switch {
+		case errors.Is(err, repository.ErrNotFound):
+			render.Status(r, http.StatusNotFound)
+			render.JSON(w, r, map[string]string{"error": "System not found"})
+		case errors.Is(err, repository.ErrHasChildren):
+			render.Status(r, http.StatusConflict)
+			render.JSON(w, r, map[string]string{"error": "System has dependent records; use ?cascade=true to delete"})
+		default:
+			h.logger.Error("Failed to delete system", zap.String("id", id), zap.Error(err))
+			render.Status(r, http.StatusInternalServerError)
+			render.JSON(w, r, map[string]string{"error": "Failed to delete system"})
+		}
 		return
 	}
 
@@ -166,7 +179,12 @@ func (h *SystemHandler) DeleteSystem(w http.ResponseWriter, r *http.Request) {
 func (h *SystemHandler) GetSubsystems(w http.ResponseWriter, r *http.Request) {
 	parentID := chi.URLParam(r, "id")
 	recursive := r.URL.Query().Get("recursive") == "true"
-	params := queryparams.SystemQueryParams{}.BuildFromRequest(r)
+	params, err := queryparams.SystemQueryParams{}.BuildFromRequest(r, h.cfg.API.DefaultLimit)
+	if err != nil {
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, map[string]string{"error": err.Error()})
+		return
+	}
 
 	systems, err := h.repo.GetSubsystems(parentID, recursive)
 	if err != nil {
@@ -199,7 +217,12 @@ func (h *SystemHandler) GetDeployments(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
 	// Build optional pagination params from request
-	params := queryparams.DeploymentsQueryParams{}.BuildFromRequest(r)
+	params, err := queryparams.DeploymentsQueryParams{}.BuildFromRequest(r, h.cfg.API.DefaultLimit)
+	if err != nil {
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, map[string]string{"error": err.Error()})
+		return
+	}
 	params.System = append(params.System, id)
 
 	// Use deployment repository helper to find deployments associated with this system
@@ -221,7 +244,12 @@ func (h *SystemHandler) GetDeployments(w http.ResponseWriter, r *http.Request) {
 // GetProcedures retrieves procedures associated with a system.
 func (h *SystemHandler) GetProcedures(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	params := queryparams.ProceduresQueryParams{}.BuildFromRequest(r)
+	params, err := queryparams.ProceduresQueryParams{}.BuildFromRequest(r, h.cfg.API.DefaultLimit)
+	if err != nil {
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, map[string]string{"error": err.Error()})
+		return
+	}
 
 	procedures, total, err := h.procedureRepo.ListBySystem(id, params)
 	if err != nil {
@@ -246,8 +274,7 @@ func (h *SystemHandler) AddSubsystem(w http.ResponseWriter, r *http.Request) {
 	system, err := h.fc.Deserialize(contentType, r.Body)
 	if err != nil {
 		h.logger.Error("Failed to deserialize system", zap.Error(err))
-		render.Status(r, http.StatusBadRequest)
-		render.JSON(w, r, map[string]string{"error": "Invalid request body"})
+		writeDeserializeError(w, r, err)
 		return
 	}
 

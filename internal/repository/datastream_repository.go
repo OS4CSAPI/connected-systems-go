@@ -53,6 +53,11 @@ func (r *DatastreamRepository) List(params *queryparams.DatastreamsQueryParams, 
 	query := r.db.Model(&domains.Datastream{})
 	query = r.applyFilters(query, params, systemID)
 
+	if params.PhenomenonTime != nil && params.PhenomenonTime.Latest {
+		err := query.Order("phenomenon_time_start desc").Limit(1).Find(&datastreams).Error
+		return datastreams, int64(len(datastreams)), err
+	}
+
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
@@ -94,11 +99,11 @@ func (r *DatastreamRepository) populateSystemAssociations(datastream *domains.Da
 	}
 	systemID := *datastream.SystemID
 
-	// Procedure from SystemKindID FK
+	// Procedure from TypeOfID FK
 	var sys domains.System
-	if err := r.db.Select("id", "system_kind_id").Where("id = ?", systemID).First(&sys).Error; err == nil {
-		if sys.SystemKindID != nil && *sys.SystemKindID != "" {
-			kindID := *sys.SystemKindID
+	if err := r.db.Select("id", "type_of_id").Where("id = ?", systemID).First(&sys).Error; err == nil {
+		if sys.TypeOfID != nil && *sys.TypeOfID != "" {
+			kindID := *sys.TypeOfID
 			datastream.ProcedureLink = &common_shared.Link{Href: "procedures/" + kindID}
 			datastream.ProcedureID = &kindID
 		}
@@ -132,15 +137,42 @@ func (r *DatastreamRepository) deriveFOIFromSamplingFeature(datastream *domains.
 // Delete deletes a datastream.
 // If cascade is true, all observations associated with the datastream are deleted first.
 func (r *DatastreamRepository) Delete(id string, cascade bool) error {
+	// Always clean join table first to unblock FK constraints.
+	if err := r.db.Exec("DELETE FROM system_datastreams WHERE datastream_id = ?", id).Error; err != nil {
+		return err
+	}
+
 	if !cascade {
-		return r.db.Delete(&domains.Datastream{}, "id = ?", id).Error
+		var obsCount int64
+		if err := r.db.Model(&domains.Observation{}).Where("datastream_id = ?", id).Count(&obsCount).Error; err != nil {
+			return err
+		}
+		if obsCount > 0 {
+			return ErrHasChildren
+		}
+
+		result := r.db.Delete(&domains.Datastream{}, "id = ?", id)
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return ErrNotFound
+		}
+		return nil
 	}
 
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Where("datastream_id = ?", id).Delete(&domains.Observation{}).Error; err != nil {
 			return err
 		}
-		return tx.Delete(&domains.Datastream{}, "id = ?", id).Error
+		result := tx.Delete(&domains.Datastream{}, "id = ?", id)
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return ErrNotFound
+		}
+		return nil
 	})
 }
 
@@ -179,7 +211,7 @@ func (r *DatastreamRepository) applyFilters(query *gorm.DB, params *queryparams.
 		query = query.Where(strings.Join(clauses, " OR "), args...)
 	}
 
-	if params.PhenomenonTime != nil {
+	if params.PhenomenonTime != nil && !params.PhenomenonTime.Latest {
 		if params.PhenomenonTime.Start != nil && params.PhenomenonTime.End != nil {
 			query = query.Where("phenomenon_time_start <= ? AND (phenomenon_time_end IS NULL OR phenomenon_time_end >= ?)", params.PhenomenonTime.End, params.PhenomenonTime.Start)
 		} else if params.PhenomenonTime.Start != nil {
@@ -223,9 +255,6 @@ func normalizeDatastreamRefs(datastream *domains.Datastream) {
 		return
 	}
 
-	if datastream.SystemLink != nil {
-		datastream.SystemID = datastream.SystemLink.GetId("systems")
-	}
 	if datastream.ProcedureLink != nil {
 		datastream.ProcedureID = datastream.ProcedureLink.GetId("procedures")
 	}

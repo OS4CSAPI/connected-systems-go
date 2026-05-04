@@ -53,6 +53,11 @@ func (r *ControlStreamRepository) List(params *queryparams.ControlStreamsQueryPa
 	query := r.db.Model(&domains.ControlStream{})
 	query = r.applyFilters(query, params, systemID)
 
+	if params.IssueTime != nil && params.IssueTime.Latest {
+		err := query.Order("issue_time_start desc").Limit(1).Find(&controlStreams).Error
+		return controlStreams, int64(len(controlStreams)), err
+	}
+
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
@@ -94,11 +99,11 @@ func (r *ControlStreamRepository) populateSystemAssociations(cs *domains.Control
 	}
 	systemID := *cs.SystemID
 
-	// Procedure from SystemKindID FK
+	// Procedure from TypeOfID FK
 	var sys domains.System
-	if err := r.db.Select("id", "system_kind_id").Where("id = ?", systemID).First(&sys).Error; err == nil {
-		if sys.SystemKindID != nil && *sys.SystemKindID != "" {
-			kindID := *sys.SystemKindID
+	if err := r.db.Select("id", "type_of_id").Where("id = ?", systemID).First(&sys).Error; err == nil {
+		if sys.TypeOfID != nil && *sys.TypeOfID != "" {
+			kindID := *sys.TypeOfID
 			cs.ProcedureLink = &common_shared.Link{Href: "procedures/" + kindID}
 			cs.ProcedureID = &kindID
 		}
@@ -132,15 +137,42 @@ func (r *ControlStreamRepository) deriveFOIFromSamplingFeature(cs *domains.Contr
 // Delete deletes a control stream.
 // If cascade is true, all commands associated with the control stream are deleted first.
 func (r *ControlStreamRepository) Delete(id string, cascade bool) error {
+	// Always clean join table first to unblock FK constraints.
+	if err := r.db.Exec("DELETE FROM system_controlstreams WHERE control_stream_id = ?", id).Error; err != nil {
+		return err
+	}
+
 	if !cascade {
-		return r.db.Delete(&domains.ControlStream{}, "id = ?", id).Error
+		var cmdCount int64
+		if err := r.db.Model(&domains.Command{}).Where("control_stream_id = ?", id).Count(&cmdCount).Error; err != nil {
+			return err
+		}
+		if cmdCount > 0 {
+			return ErrHasChildren
+		}
+
+		result := r.db.Delete(&domains.ControlStream{}, "id = ?", id)
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return ErrNotFound
+		}
+		return nil
 	}
 
 	return r.db.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Where("control_stream_id = ?", id).Delete(&domains.Command{}).Error; err != nil {
 			return err
 		}
-		return tx.Delete(&domains.ControlStream{}, "id = ?", id).Error
+		result := tx.Delete(&domains.ControlStream{}, "id = ?", id)
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return ErrNotFound
+		}
+		return nil
 	})
 }
 
@@ -179,7 +211,7 @@ func (r *ControlStreamRepository) applyFilters(query *gorm.DB, params *querypara
 		query = query.Where(strings.Join(clauses, " OR "), args...)
 	}
 
-	if params.IssueTime != nil {
+	if params.IssueTime != nil && !params.IssueTime.Latest {
 		if params.IssueTime.Start != nil && params.IssueTime.End != nil {
 			query = query.Where("issue_time_start <= ? AND (issue_time_end IS NULL OR issue_time_end >= ?)", params.IssueTime.End, params.IssueTime.Start)
 		} else if params.IssueTime.Start != nil {
@@ -223,9 +255,6 @@ func normalizeControlStreamRefs(cs *domains.ControlStream) {
 		return
 	}
 
-	if cs.SystemLink != nil {
-		cs.SystemID = cs.SystemLink.GetId("systems")
-	}
 	if cs.ProcedureLink != nil {
 		cs.ProcedureID = cs.ProcedureLink.GetId("procedures")
 	}

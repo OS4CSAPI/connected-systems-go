@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"encoding/json"
 	"strings"
 
@@ -100,22 +101,48 @@ func (r *SystemRepository) GetByUID(uid string) (*domains.System, error) {
 	return &system, nil
 }
 
+// GetByIDs returns systems keyed by ID or unique identifier
+func (r *SystemRepository) GetByIDs(ctx context.Context, ids []string) (map[string]*domains.System, error) {
+	result := make(map[string]*domains.System)
+	if len(ids) == 0 {
+		return result, nil
+	}
+
+	var systems []*domains.System
+	if err := r.db.WithContext(ctx).Where("id IN ? OR unique_identifier IN ?", ids, ids).Find(&systems).Error; err != nil {
+		return nil, err
+	}
+
+	for _, s := range systems {
+		if s == nil {
+			continue
+		}
+		result[s.ID] = s
+		if string(s.UniqueIdentifier) != "" {
+			result[string(s.UniqueIdentifier)] = s
+		}
+	}
+
+	return result, nil
+}
+
 // List retrieves systems with filtering
 func (r *SystemRepository) List(params *queryparams.SystemQueryParams) ([]*domains.System, int64, error) {
 	var systems []*domains.System
 	var total int64
 
 	query := r.db.Model(&domains.System{})
-
-	// Apply filters
 	query = r.applyFilters(query, params)
 
-	// Count total
+	if params.Datetime != nil && params.Datetime.Latest {
+		err := query.Order("valid_time_start desc").Limit(1).Find(&systems).Error
+		return systems, int64(len(systems)), err
+	}
+
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
 
-	// Apply pagination
 	if params.Limit > 0 {
 		query = query.Limit(params.Limit)
 	}
@@ -166,15 +193,15 @@ func (r *SystemRepository) Update(systemId string, system *domains.System) error
 	})
 }
 
-// syncProcedures keeps system_procedures in sync with SystemKindID.
+// syncProcedures keeps system_procedures in sync with TypeOfID.
 func (r *SystemRepository) syncProcedures(tx *gorm.DB, system *domains.System) error {
 	if err := tx.Exec("DELETE FROM system_procedures WHERE system_id = ?", system.ID).Error; err != nil {
 		return err
 	}
-	if system.SystemKindID != nil && strings.TrimSpace(*system.SystemKindID) != "" {
+	if system.TypeOfID != nil && strings.TrimSpace(*system.TypeOfID) != "" {
 		return tx.Exec(
 			"INSERT INTO system_procedures (system_id, procedure_id) VALUES (?, ?) ON CONFLICT DO NOTHING",
-			system.ID, *system.SystemKindID,
+			system.ID, *system.TypeOfID,
 		).Error
 	}
 	return nil
@@ -183,7 +210,52 @@ func (r *SystemRepository) syncProcedures(tx *gorm.DB, system *domains.System) e
 // Delete deletes a system
 func (r *SystemRepository) Delete(id string, cascade bool) error {
 	if !cascade {
-		return r.db.Delete(&domains.System{}, "id = ?", id).Error
+		// Application-level child check (no DB FK constraints on these columns).
+		var childCount int64
+		if err := r.db.Model(&domains.System{}).Where("parent_system_id = ?", id).Count(&childCount).Error; err != nil {
+			return err
+		}
+		if childCount > 0 {
+			return ErrHasChildren
+		}
+		var sfCount int64
+		if err := r.db.Model(&domains.SamplingFeature{}).Where("parent_system_id = ?", id).Count(&sfCount).Error; err != nil {
+			return err
+		}
+		if sfCount > 0 {
+			return ErrHasChildren
+		}
+		var dsCount int64
+		if err := r.db.Model(&domains.Datastream{}).Where("system_id = ?", id).Count(&dsCount).Error; err != nil {
+			return err
+		}
+		if dsCount > 0 {
+			return ErrHasChildren
+		}
+		var csCount int64
+		if err := r.db.Model(&domains.ControlStream{}).Where("system_id = ?", id).Count(&csCount).Error; err != nil {
+			return err
+		}
+		if csCount > 0 {
+			return ErrHasChildren
+		}
+
+		result := r.db.Delete(&domains.System{}, "id = ?", id)
+		if result.Error != nil {
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return ErrNotFound
+		}
+		return nil
+	}
+
+	var count int64
+	if err := r.db.Model(&domains.System{}).Where("id = ?", id).Count(&count).Error; err != nil {
+		return err
+	}
+	if count == 0 {
+		return ErrNotFound
 	}
 
 	return r.db.Transaction(func(tx *gorm.DB) error {
@@ -240,6 +312,9 @@ func (r *SystemRepository) deleteSystemDatastreams(tx *gorm.DB, systemID string)
 	}
 
 	if len(datastreamIDs) > 0 {
+		if err := tx.Exec("DELETE FROM system_datastreams WHERE datastream_id IN ?", datastreamIDs).Error; err != nil {
+			return err
+		}
 		if err := tx.Where("datastream_id IN ?", datastreamIDs).Delete(&domains.Observation{}).Error; err != nil {
 			return err
 		}
@@ -255,6 +330,9 @@ func (r *SystemRepository) deleteSystemControlStreams(tx *gorm.DB, systemID stri
 	}
 
 	if len(controlStreamIDs) > 0 {
+		if err := tx.Exec("DELETE FROM system_controlstreams WHERE control_stream_id IN ?", controlStreamIDs).Error; err != nil {
+			return err
+		}
 		if err := tx.Where("control_stream_id IN ?", controlStreamIDs).Delete(&domains.Command{}).Error; err != nil {
 			return err
 		}
@@ -366,12 +444,12 @@ func (r *SystemRepository) HasProcedures(systemID string) (bool, error) {
 	}
 
 	var system domains.System
-	err = r.db.Select("id", "system_kind_id").Where("id = ?", systemID).First(&system).Error
+	err = r.db.Select("id", "type_of_id").Where("id = ?", systemID).First(&system).Error
 	if err != nil {
 		return false, err
 	}
 
-	return system.SystemKindID != nil && strings.TrimSpace(*system.SystemKindID) != "", nil
+	return system.TypeOfID != nil && strings.TrimSpace(*system.TypeOfID) != "", nil
 }
 
 func (r *SystemRepository) hasAssociatedRecords(model interface{}, query string, args ...interface{}) (bool, error) {
@@ -409,7 +487,7 @@ func (r *SystemRepository) applyFilters(query *gorm.DB, params *queryparams.Syst
 		query = query.Where("parent_system_id IN ?", params.Parent)
 	}
 
-	if params.Datetime != nil {
+	if params.Datetime != nil && !params.Datetime.Latest {
 		// Only add conditions if start/end are not nil
 		if params.Datetime.Start != nil && params.Datetime.End != nil {
 			query = query.Where("valid_time_start <= ? AND (valid_time_end IS NULL OR valid_time_end >= ?)", params.Datetime.End, params.Datetime.Start)

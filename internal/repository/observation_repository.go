@@ -44,7 +44,6 @@ func (r *ObservationRepository) GetByID(id string) (*domains.Observation, error)
 
 func (r *ObservationRepository) List(params *queryparams.ObservationsQueryParams, datastreamID *string) ([]*domains.Observation, int64, error) {
 	var observations []*domains.Observation
-	var total int64
 
 	query := r.db.Model(&domains.Observation{})
 	if datastreamID != nil {
@@ -52,6 +51,20 @@ func (r *ObservationRepository) List(params *queryparams.ObservationsQueryParams
 	}
 	query = r.applyFilters(query, params, datastreamID != nil)
 
+	// "latest" mode: return the single most-recent observation ordered by the
+	// requested time column, bypassing normal pagination.
+	latestResultTime := params.ResultTime != nil && params.ResultTime.Latest
+	latestPhenomenonTime := params.PhenomenonTime != nil && params.PhenomenonTime.Latest
+	if latestResultTime || latestPhenomenonTime {
+		orderCol := "result_time"
+		if latestPhenomenonTime {
+			orderCol = "phenomenon_time"
+		}
+		err := query.Order(orderCol + " desc").Limit(1).Find(&observations).Error
+		return observations, int64(len(observations)), err
+	}
+
+	var total int64
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
@@ -80,7 +93,14 @@ func (r *ObservationRepository) Update(observation *domains.Observation) error {
 }
 
 func (r *ObservationRepository) Delete(id string) error {
-	return r.db.Delete(&domains.Observation{}, "id = ?", id).Error
+	result := r.db.Delete(&domains.Observation{}, "id = ?", id)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return ErrNotFound
+	}
+	return nil
 }
 
 func (r *ObservationRepository) applyFilters(query *gorm.DB, params *queryparams.ObservationsQueryParams, datastreamFixed bool) *gorm.DB {
@@ -106,7 +126,7 @@ func (r *ObservationRepository) applyFilters(query *gorm.DB, params *queryparams
 		query = query.Where("datastreams.system_id IN ?", params.System)
 	}
 
-	if params.PhenomenonTime != nil {
+	if params.PhenomenonTime != nil && !params.PhenomenonTime.Latest {
 		if params.PhenomenonTime.Start != nil && params.PhenomenonTime.End != nil {
 			query = query.Where("phenomenon_time <= ? AND phenomenon_time >= ?", params.PhenomenonTime.End, params.PhenomenonTime.Start)
 		} else if params.PhenomenonTime.Start != nil {
@@ -116,7 +136,7 @@ func (r *ObservationRepository) applyFilters(query *gorm.DB, params *queryparams
 		}
 	}
 
-	if params.ResultTime != nil {
+	if params.ResultTime != nil && !params.ResultTime.Latest {
 		if params.ResultTime.Start != nil && params.ResultTime.End != nil {
 			query = query.Where("result_time <= ? AND result_time >= ?", params.ResultTime.End, params.ResultTime.Start)
 		} else if params.ResultTime.Start != nil {

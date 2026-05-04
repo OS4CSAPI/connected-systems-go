@@ -2,7 +2,6 @@ package geojson_formatters
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"strings"
@@ -58,12 +57,15 @@ func (f *DeploymentGeoJSONFormatter) SerializeAll(ctx context.Context, deploymen
 
 		var systemLinks common_shared.Links
 		for _, ds := range deployment.DeployedSystems {
-			systemLinks = append(systemLinks, ds.System)
+			link := ds.System
+			link.Href = formaters.ToFunctionalAssociationHref(link.Href)
+			systemLinks = append(systemLinks, link)
 		}
 
 		var platformLink *common_shared.Link
 		if deployment.Platform != nil {
 			platform := deployment.Platform.System
+			platform.Href = formaters.ToFunctionalAssociationHref(platform.Href)
 			platformLink = &platform
 		}
 
@@ -92,15 +94,18 @@ func (f *DeploymentGeoJSONFormatter) SerializeAll(ctx context.Context, deploymen
 // --- Deserialization ---
 
 func (f *DeploymentGeoJSONFormatter) Deserialize(ctx context.Context, reader io.Reader) (*domains.Deployment, error) {
-	var geoJSON struct {
+	body, err := io.ReadAll(reader)
+	if err != nil {
+		return nil, err
+	}
+	geoJSON, err := common_shared.DecodeWithFieldErrors[struct {
 		Type       string                              `json:"type"`
 		ID         string                              `json:"id,omitempty"`
 		Properties domains.DeploymentGeoJSONProperties `json:"properties"`
 		Geometry   *common_shared.GoGeom               `json:"geometry,omitempty"`
 		Links      common_shared.Links                 `json:"links,omitempty"`
-	}
-
-	if err := json.NewDecoder(reader).Decode(&geoJSON); err != nil {
+	}](body)
+	if err != nil {
 		return nil, err
 	}
 

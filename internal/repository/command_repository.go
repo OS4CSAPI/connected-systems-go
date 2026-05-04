@@ -52,6 +52,11 @@ func (r *CommandRepository) List(params *queryparams.CommandsQueryParams, contro
 	}
 	query = r.applyFilters(query, params, controlStreamID != nil)
 
+	if params.IssueTime != nil && params.IssueTime.Latest {
+		err := query.Order("issue_time desc").Limit(1).Find(&commands).Error
+		return commands, int64(len(commands)), err
+	}
+
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
@@ -79,7 +84,14 @@ func (r *CommandRepository) Update(cmd *domains.Command) error {
 
 // Delete deletes a command.
 func (r *CommandRepository) Delete(id string) error {
-	return r.db.Delete(&domains.Command{}, "id = ?", id).Error
+	result := r.db.Delete(&domains.Command{}, "id = ?", id)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return ErrNotFound
+	}
+	return nil
 }
 
 func (r *CommandRepository) applyFilters(query *gorm.DB, params *queryparams.CommandsQueryParams, controlStreamFixed bool) *gorm.DB {
@@ -113,7 +125,7 @@ func (r *CommandRepository) applyFilters(query *gorm.DB, params *queryparams.Com
 		query = query.Where("current_status IN ?", params.CurrentStatus)
 	}
 
-	if params.IssueTime != nil {
+	if params.IssueTime != nil && !params.IssueTime.Latest {
 		if params.IssueTime.Start != nil && params.IssueTime.End != nil {
 			query = query.Where("issue_time <= ? AND issue_time >= ?", params.IssueTime.End, params.IssueTime.Start)
 		} else if params.IssueTime.Start != nil {

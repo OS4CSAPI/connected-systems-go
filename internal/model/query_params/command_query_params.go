@@ -1,6 +1,7 @@
 package queryparams
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -21,9 +22,9 @@ type CommandsQueryParams struct {
 }
 
 // BuildFromRequest parses command query parameters from request.
-func (CommandsQueryParams) BuildFromRequest(r *http.Request) *CommandsQueryParams {
+func (CommandsQueryParams) BuildFromRequest(r *http.Request, defaultLimit int) (*CommandsQueryParams, error) {
 	params := &CommandsQueryParams{
-		QueryParams: *QueryParams{}.BuildFromRequest(r),
+		QueryParams: *QueryParams{}.BuildFromRequest(r, defaultLimit),
 	}
 
 	if cs := r.URL.Query().Get("controlStream"); cs != "" {
@@ -43,14 +44,20 @@ func (CommandsQueryParams) BuildFromRequest(r *http.Request) *CommandsQueryParam
 	}
 
 	if vals := r.URL.Query()["issueTime"]; len(vals) > 0 {
-		tr := common_shared.ParseTimeRange(vals)
+		tr, err := common_shared.ParseTimeRangeStrict(vals)
+		if err != nil {
+			return nil, fmt.Errorf("invalid issueTime: %w", err)
+		}
 		params.IssueTime = &tr
 	}
 
 	if vals := r.URL.Query()["executionTime"]; len(vals) > 0 {
-		tr := common_shared.ParseTimeRange(vals)
+		tr, err := common_shared.ParseTimeRangeStrict(vals)
+		if err != nil {
+			return nil, fmt.Errorf("invalid executionTime: %w", err)
+		}
 		params.ExecutionTime = &tr
 	}
 
-	return params
+	return params, nil
 }

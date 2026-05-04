@@ -26,7 +26,7 @@ type System struct {
 	// Associations (stored as links in JSON)
 	ParentSystemID *string `gorm:"type:varchar(255);index" json:"-"`
 
-	SystemKindID *string `gorm:"type:varchar(255);index" json:"-"`
+	TypeOfID *string `gorm:"type:varchar(255);index" json:"-"`
 
 	// Additional SWE/System metadata mapped from the JSON Schema
 	Lang                *string                           `gorm:"type:varchar(10)" json:"lang,omitempty"`
@@ -59,7 +59,7 @@ type System struct {
 	// Links to related resources
 	Links common_shared.Links `gorm:"type:jsonb" json:"links,omitempty"`
 
-	SystemKind Procedure `gorm:"foreignKey:SystemKindID;" json:"-"`
+	LinkedProcedure Procedure `gorm:"foreignKey:TypeOfID;" json:"-"`
 
 	// Associations
 	Procedures       []Procedure       `gorm:"many2many:system_procedures;"`
@@ -148,7 +148,7 @@ type SystemSensorMLFeature struct {
 	SecurityConstraints  common_shared.SecurityConstraints `json:"securityConstraints,omitempty"`
 	LegalConstraints     common_shared.LegalConstraints    `json:"legalConstraints,omitempty"`
 	Contacts             []common_shared.ContactWrapper    `json:"contacts,omitempty"`
-	Documentation        common_shared.Documents           `json:"documentation,omitempty"`
+	Documentation        common_shared.Documents           `json:"documents,omitempty"`
 	History              common_shared.History             `json:"history,omitempty"`
 	Definition           string                            `json:"definition,omitempty"`
 	TypeOf               *common_shared.Link               `json:"typeOf,omitempty"`

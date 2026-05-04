@@ -46,6 +46,11 @@ func (r *SamplingFeatureRepository) ListSystem(params *queryparams.SamplingFeatu
 	query := r.db.Model(&domains.SamplingFeature{})
 	query = r.applyFilters(query, params, systemID)
 
+	if params.DateTime != nil && params.DateTime.Latest {
+		err := query.Order("valid_time_start desc").Limit(1).Find(&features).Error
+		return features, int64(len(features)), err
+	}
+
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
@@ -68,7 +73,14 @@ func (r *SamplingFeatureRepository) Update(sf *domains.SamplingFeature) error {
 
 // Delete deletes a sampling feature
 func (r *SamplingFeatureRepository) Delete(id string) error {
-	return r.db.Delete(&domains.SamplingFeature{}, "id = ?", id).Error
+	result := r.db.Delete(&domains.SamplingFeature{}, "id = ?", id)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return ErrNotFound
+	}
+	return nil
 }
 
 func (r *SamplingFeatureRepository) applyFilters(query *gorm.DB, params *queryparams.SamplingFeatureQueryParams, systemID *string) *gorm.DB {
@@ -80,7 +92,7 @@ func (r *SamplingFeatureRepository) applyFilters(query *gorm.DB, params *querypa
 		query = query.Where("name ILIKE ? OR description ILIKE ?", "%"+strings.Join(params.Q, "%")+"%", "%"+strings.Join(params.Q, "%")+"%")
 	}
 
-	if params.DateTime != nil {
+	if params.DateTime != nil && !params.DateTime.Latest {
 		// Only add conditions if start/end are not nil
 		if params.DateTime.Start != nil && params.DateTime.End != nil {
 			query = query.Where("valid_time_start <= ? AND (valid_time_end IS NULL OR valid_time_end >= ?)", params.DateTime.End, params.DateTime.Start)

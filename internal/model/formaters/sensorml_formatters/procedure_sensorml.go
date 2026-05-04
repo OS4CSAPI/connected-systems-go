@@ -145,15 +145,15 @@ func (f *ProcedureSensorMLFormatter) SerializeAll(ctx context.Context, procedure
 			Contacts:             procedure.Contacts,
 			Documentation:        procedure.Documentation,
 			History:              procedure.History,
-			TypeOf:               procedure.TypeOf,
+			TypeOf:               absolutizeLink(procedure.TypeOf),
 			Configuration:        procedure.Configuration,
-			FeaturesOfInterest:   procedure.FeaturesOfInterest,
+			FeaturesOfInterest:   absolutizeLinksValue(procedure.FeaturesOfInterest),
 			Inputs:               procedure.Inputs,
 			Outputs:              procedure.Outputs,
 			Parameters:           procedure.Parameters,
 			Modes:                procedure.Modes,
 			Method:               procedure.Method,
-			AttachedTo:           procedure.AttachedTo,
+			AttachedTo:           absolutizeLink(procedure.AttachedTo),
 			LocalReferenceFrames: procedure.LocalReferenceFrames,
 			LocalTimeFrames:      procedure.LocalTimeFrames,
 			ValidTime:            procedure.ValidTime,
@@ -204,8 +204,8 @@ func (f *ProcedureSensorMLFormatter) Deserialize(ctx context.Context, reader io.
 		return nil, err
 	}
 
-	var sensorML domains.ProcedureSensorMLFeature
-	if err := json.Unmarshal(body, &sensorML); err != nil {
+	sensorML, err := common_shared.DecodeWithFieldErrors[domains.ProcedureSensorMLFeature](body)
+	if err != nil {
 		return nil, err
 	}
 

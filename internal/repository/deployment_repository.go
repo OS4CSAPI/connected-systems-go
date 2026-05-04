@@ -52,6 +52,11 @@ func (r *DeploymentRepository) List(params *queryparams.DeploymentsQueryParams, 
 	query := r.db.Model(&domains.Deployment{})
 	query = r.applyFilters(query, params, parentId)
 
+	if params.DateTime != nil && params.DateTime.Latest {
+		err := query.Order("valid_time_start desc").Limit(1).Find(&deployments).Error
+		return deployments, int64(len(deployments)), err
+	}
+
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
 	}
@@ -108,8 +113,63 @@ func hrefLastSegment(href string) string {
 }
 
 // Delete deletes a deployment
-func (r *DeploymentRepository) Delete(id string) error {
-	return r.db.Delete(&domains.Deployment{}, "id = ?", id).Error
+func (r *DeploymentRepository) Delete(id string, cascade bool) error {
+	if !cascade {
+		var childCount int64
+		if err := r.db.Model(&domains.Deployment{}).Where("parent_deployment_id = ?", id).Count(&childCount).Error; err != nil {
+			return err
+		}
+		if childCount > 0 {
+			return ErrHasChildren
+		}
+
+		if err := r.db.Exec("DELETE FROM system_deployments WHERE deployment_id = ?", id).Error; err != nil {
+			return err
+		}
+
+		result := r.db.Delete(&domains.Deployment{}, "id = ?", id)
+		if result.Error != nil {
+			if isFKViolation(result.Error) {
+				return ErrHasChildren
+			}
+			return result.Error
+		}
+		if result.RowsAffected == 0 {
+			return ErrNotFound
+		}
+		return nil
+	}
+
+	var count int64
+	if err := r.db.Model(&domains.Deployment{}).Where("id = ?", id).Count(&count).Error; err != nil {
+		return err
+	}
+	if count == 0 {
+		return ErrNotFound
+	}
+
+	return r.db.Transaction(func(tx *gorm.DB) error {
+		return r.deleteCascade(tx, id)
+	})
+}
+
+func (r *DeploymentRepository) deleteCascade(tx *gorm.DB, deploymentID string) error {
+	var childIDs []string
+	if err := tx.Model(&domains.Deployment{}).Where("parent_deployment_id = ?", deploymentID).Pluck("id", &childIDs).Error; err != nil {
+		return err
+	}
+
+	for _, childID := range childIDs {
+		if err := r.deleteCascade(tx, childID); err != nil {
+			return err
+		}
+	}
+
+	if err := tx.Exec("DELETE FROM system_deployments WHERE deployment_id = ?", deploymentID).Error; err != nil {
+		return err
+	}
+
+	return tx.Delete(&domains.Deployment{}, "id = ?", deploymentID).Error
 }
 
 // Delete all deployments - for testing purposes
@@ -134,7 +194,7 @@ func (r *DeploymentRepository) applyFilters(query *gorm.DB, params *queryparams.
 		query = query.Where(strings.Join(clauses, " OR "), args...)
 	}
 
-	if params.DateTime != nil {
+	if params.DateTime != nil && !params.DateTime.Latest {
 		// Only add conditions if start/end are not nil
 		if params.DateTime.Start != nil && params.DateTime.End != nil {
 			query = query.Where("valid_time_start <= ? AND (valid_time_end IS NULL OR valid_time_end >= ?)", params.DateTime.End, params.DateTime.Start)

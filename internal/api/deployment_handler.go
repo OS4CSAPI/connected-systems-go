@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 
@@ -28,7 +29,12 @@ func NewDeploymentHandler(cfg *config.Config, logger *zap.Logger, repo *reposito
 }
 
 func (h *DeploymentHandler) ListDeployments(w http.ResponseWriter, r *http.Request) {
-	params := queryparams.DeploymentsQueryParams{}.BuildFromRequest(r)
+	params, err := queryparams.DeploymentsQueryParams{}.BuildFromRequest(r, h.cfg.API.DefaultLimit)
+	if err != nil {
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, map[string]string{"error": err.Error()})
+		return
+	}
 
 	deployments, total, err := h.repo.List(params, nil)
 	if err != nil {
@@ -75,8 +81,7 @@ func (h *DeploymentHandler) CreateDeployment(w http.ResponseWriter, r *http.Requ
 	deployment, err := h.fc.Deserialize(contentType, r.Body)
 	if err != nil {
 		h.logger.Error("Failed to deserialize deployment", zap.Error(err))
-		render.Status(r, http.StatusBadRequest)
-		render.JSON(w, r, map[string]string{"error": "Invalid request body"})
+		writeDeserializeError(w, r, err)
 		return
 	}
 
@@ -99,8 +104,7 @@ func (h *DeploymentHandler) UpdateDeployment(w http.ResponseWriter, r *http.Requ
 	deployment, err := h.fc.Deserialize(contentType, r.Body)
 	if err != nil {
 		h.logger.Error("Failed to deserialize deployment", zap.Error(err))
-		render.Status(r, http.StatusBadRequest)
-		render.JSON(w, r, map[string]string{"error": "Invalid request body"})
+		writeDeserializeError(w, r, err)
 		return
 	}
 
@@ -117,11 +121,21 @@ func (h *DeploymentHandler) UpdateDeployment(w http.ResponseWriter, r *http.Requ
 
 func (h *DeploymentHandler) DeleteDeployment(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
+	cascade := r.URL.Query().Get("cascade") == "true"
 
-	if err := h.repo.Delete(id); err != nil {
-		h.logger.Error("Failed to delete deployment", zap.String("id", id), zap.Error(err))
-		render.Status(r, http.StatusInternalServerError)
-		render.JSON(w, r, map[string]string{"error": "Failed to delete deployment"})
+	if err := h.repo.Delete(id, cascade); err != nil {
+		switch {
+		case errors.Is(err, repository.ErrNotFound):
+			render.Status(r, http.StatusNotFound)
+			render.JSON(w, r, map[string]string{"error": "Deployment not found"})
+		case errors.Is(err, repository.ErrHasChildren):
+			render.Status(r, http.StatusConflict)
+			render.JSON(w, r, map[string]string{"error": "Deployment has dependent records; use ?cascade=true to delete"})
+		default:
+			h.logger.Error("Failed to delete deployment", zap.String("id", id), zap.Error(err))
+			render.Status(r, http.StatusInternalServerError)
+			render.JSON(w, r, map[string]string{"error": "Failed to delete deployment"})
+		}
 		return
 	}
 
@@ -131,7 +145,12 @@ func (h *DeploymentHandler) DeleteDeployment(w http.ResponseWriter, r *http.Requ
 // List all subdeployments
 func (h *DeploymentHandler) ListSubdeployments(w http.ResponseWriter, r *http.Request) {
 	parentID := chi.URLParam(r, "id")
-	params := queryparams.DeploymentsQueryParams{}.BuildFromRequest(r)
+	params, err := queryparams.DeploymentsQueryParams{}.BuildFromRequest(r, h.cfg.API.DefaultLimit)
+	if err != nil {
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, map[string]string{"error": err.Error()})
+		return
+	}
 
 	deployments, total, err := h.repo.List(params, &parentID)
 	if err != nil {

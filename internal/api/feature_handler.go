@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -17,16 +18,16 @@ import (
 // Requests to /collections/{id}/items[/{featureId}] are transparently redirected to the
 // canonical endpoint so that OGC API Features clients work alongside the CS-specific paths.
 var canonicalCollectionPaths = map[string]string{
-	"systems":         "/systems",
-	"deployments":     "/deployments",
-	"procedures":      "/procedures",
+	"systems":          "/systems",
+	"deployments":      "/deployments",
+	"procedures":       "/procedures",
 	"samplingFeatures": "/samplingFeatures",
-	"properties":      "/properties",
-	"datastreams":     "/datastreams",
-	"observations":    "/observations",
-	"controlstreams":  "/controlstreams",
-	"commands":        "/commands",
-	"systemEvents":    "/systemEvents",
+	"properties":       "/properties",
+	"datastreams":      "/datastreams",
+	"observations":     "/observations",
+	"controlstreams":   "/controlstreams",
+	"commands":         "/commands",
+	"systemEvents":     "/systemEvents",
 }
 
 func redirectToCanonical(w http.ResponseWriter, r *http.Request, target string) {
@@ -62,7 +63,7 @@ func (h *FeatureHandler) ListFeatures(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	params := queryparams.FeatureQueryParams{}.BuildFromRequest(r)
+	params := queryparams.FeatureQueryParams{}.BuildFromRequest(r, h.cfg.API.DefaultLimit)
 	params.CollectionID = collectionID
 
 	features, total, err := h.repo.ListByCollection(collectionID, params)
@@ -129,7 +130,8 @@ func (h *FeatureHandler) CreateFeature(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		h.logger.Error("Failed to decode feature", zap.Error(err))
-		return // BuildFromRequest already wrote error response
+		writeDeserializeError(w, r, err)
+		return
 	}
 
 	// Set collection ID from path
@@ -169,7 +171,8 @@ func (h *FeatureHandler) UpdateFeature(w http.ResponseWriter, r *http.Request) {
 	updated, err := h.fc.Deserialize(r.Header.Get("content-type"), r.Body)
 	if err != nil {
 		h.logger.Error("Failed to decode feature", zap.Error(err))
-		return // BuildFromRequest already wrote error response
+		writeDeserializeError(w, r, err)
+		return
 	}
 
 	// Preserve ID and collection
@@ -207,9 +210,15 @@ func (h *FeatureHandler) DeleteFeature(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.repo.Delete(featureID); err != nil {
-		h.logger.Error("Failed to delete feature", zap.Error(err))
-		render.Status(r, http.StatusInternalServerError)
-		render.JSON(w, r, map[string]string{"error": "Failed to delete feature"})
+		switch {
+		case errors.Is(err, repository.ErrNotFound):
+			render.Status(r, http.StatusNotFound)
+			render.JSON(w, r, map[string]string{"error": "Feature not found"})
+		default:
+			h.logger.Error("Failed to delete feature", zap.Error(err))
+			render.Status(r, http.StatusInternalServerError)
+			render.JSON(w, r, map[string]string{"error": "Failed to delete feature"})
+		}
 		return
 	}
 

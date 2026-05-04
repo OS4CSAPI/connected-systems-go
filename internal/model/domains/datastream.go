@@ -22,7 +22,6 @@ type Datastream struct {
 	Formats common_shared.StringArray `gorm:"type:jsonb" json:"formats,omitempty"`
 
 	// Resource links expected by the schema.
-	SystemLink          *common_shared.Link `gorm:"type:jsonb" json:"system@link,omitempty"`
 	OutputName          string              `gorm:"type:varchar(255)" json:"outputName,omitempty"`
 	ProcedureLink       *common_shared.Link `gorm:"type:jsonb" json:"procedure@link,omitempty"`
 	DeploymentLink      *common_shared.Link `gorm:"type:jsonb" json:"deployment@link,omitempty"`
@@ -54,7 +53,7 @@ type Datastream struct {
 	FeatureOfInterestID *string `gorm:"type:varchar(255);index" json:"-"`
 	SamplingFeatureID   *string `gorm:"type:varchar(255);index" json:"-"`
 
-	Systems []System `gorm:"many2many:system_datastreams;"`
+	Systems []System `gorm:"many2many:system_datastreams;" json:"-"`
 }
 
 // TableName specifies the table name.

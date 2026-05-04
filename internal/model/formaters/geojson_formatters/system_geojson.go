@@ -2,7 +2,6 @@ package geojson_formatters
 
 import (
 	"context"
-	"encoding/json"
 	"io"
 	"strings"
 
@@ -44,35 +43,48 @@ func (f *SystemGeoJSONFormatter) SerializeAll(ctx context.Context, systems []*do
 		return []domains.SystemGeoJSONFeature{}, nil
 	}
 
-	// Collect system kind IDs for batch loading
+	// Collect system kind IDs and parent system IDs for batch loading
 	kindIDs := make([]string, 0, len(systems))
+	parentIDs := make([]string, 0, len(systems))
 	for _, s := range systems {
-		if s.SystemKindID != nil && *s.SystemKindID != "" {
-			kindIDs = append(kindIDs, *s.SystemKindID)
+		if s.TypeOfID != nil && *s.TypeOfID != "" {
+			kindIDs = append(kindIDs, *s.TypeOfID)
+		}
+		if s.ParentSystemID != nil && strings.TrimSpace(*s.ParentSystemID) != "" {
+			parentIDs = append(parentIDs, strings.TrimSpace(*s.ParentSystemID))
 		}
 	}
 
+	// Build resource cache for enriching association links
+	cache := formaters.NewResourceCache()
+
 	// Batch-fetch procedures (system kinds)
-	kindMap := make(map[string]*domains.Procedure)
 	if len(kindIDs) > 0 && f.repos != nil {
-		procedures, err := f.repos.Procedure.GetByIDs(ctx, kindIDs)
-		if err == nil {
-			for _, p := range procedures {
-				kindMap[p.ID] = p
-			}
+		if err := cache.FetchProcedures(ctx, f.repos.Procedure, kindIDs); err != nil {
+			// Non-fatal: links will be emitted without enrichment
 		}
 	}
+
+	// Batch-fetch parent systems
+	if len(parentIDs) > 0 && f.repos != nil {
+		if err := cache.FetchParentSystems(ctx, f.repos.System, parentIDs); err != nil {
+			// Non-fatal: links will be emitted without enrichment
+		}
+	}
+
+	// Build a kindMap for systemKind@link (same data, different access pattern)
+	kindMap := cache.Procedures
 
 	var features []domains.SystemGeoJSONFeature
 	for _, system := range systems {
 		// Build systemKind@link — prefer the full procedure record (title/uid),
 		// fall back to a bare href from SystemKindID, then to TypeOf as a last resort.
 		var kindLink *common_shared.Link
-		if system.SystemKindID != nil && strings.TrimSpace(*system.SystemKindID) != "" {
-			id := strings.TrimSpace(*system.SystemKindID)
+		if system.TypeOfID != nil && strings.TrimSpace(*system.TypeOfID) != "" {
+			id := strings.TrimSpace(*system.TypeOfID)
 			if proc, ok := kindMap[id]; ok {
 				kindLink = &common_shared.Link{
-					Href:  "procedures/" + proc.ID,
+					Href:  formaters.ToFunctionalAssociationHref("/procedures/" + proc.ID),
 					Rel:   common_shared.OGCRel("systemKind"),
 					Type:  GeoJSONContentType,
 					Title: proc.Name,
@@ -80,14 +92,14 @@ func (f *SystemGeoJSONFormatter) SerializeAll(ctx context.Context, systems []*do
 				}
 			} else {
 				kindLink = &common_shared.Link{
-					Href: "procedures/" + id,
+					Href: formaters.ToFunctionalAssociationHref("/procedures/" + id),
 					Rel:  common_shared.OGCRel("systemKind"),
 				}
 			}
 		} else if system.TypeOf != nil && system.TypeOf.Href != "" {
 			// TypeOf was stored before SystemKindID was introduced; surface it as systemKind@link
 			kindLink = &common_shared.Link{
-				Href:  system.TypeOf.Href,
+				Href:  formaters.ToFunctionalAssociationHref(system.TypeOf.Href),
 				Rel:   common_shared.OGCRel("systemKind"),
 				Title: system.TypeOf.Title,
 			}
@@ -123,7 +135,7 @@ func (f *SystemGeoJSONFormatter) SerializeAll(ctx context.Context, systems []*do
 				LocalTimeFrames:      system.LocalTimeFrames,
 				Position:             system.Position,
 			},
-			Links: formaters.AppendGeoJSONSystemAssociationLinks(system),
+			Links: formaters.AppendGeoJSONSystemAssociationLinks(system, cache),
 		}
 		features = append(features, feature)
 	}
@@ -134,15 +146,18 @@ func (f *SystemGeoJSONFormatter) SerializeAll(ctx context.Context, systems []*do
 // --- Deserialization ---
 
 func (f *SystemGeoJSONFormatter) Deserialize(ctx context.Context, reader io.Reader) (*domains.System, error) {
-	var geoJSON struct {
+	body, err := io.ReadAll(reader)
+	if err != nil {
+		return nil, err
+	}
+	geoJSON, err := common_shared.DecodeWithFieldErrors[struct {
 		Type       string                          `json:"type"`
 		ID         string                          `json:"id,omitempty"`
 		Properties domains.SystemGeoJSONProperties `json:"properties"`
 		Geometry   *common_shared.GoGeom           `json:"geometry,omitempty"`
 		Links      common_shared.Links             `json:"links,omitempty"`
-	}
-
-	if err := json.NewDecoder(reader).Decode(&geoJSON); err != nil {
+	}](body)
+	if err != nil {
 		return nil, err
 	}
 
@@ -166,7 +181,7 @@ func (f *SystemGeoJSONFormatter) Deserialize(ctx context.Context, reader io.Read
 	system.SMLType = geoJSON.Properties.SMLType
 	system.ValidTime = geoJSON.Properties.ValidTime
 	if geoJSON.Properties.SystemKind != nil {
-		system.SystemKindID = geoJSON.Properties.SystemKind.GetId("procedures")
+		system.TypeOfID = geoJSON.Properties.SystemKind.GetId("procedures")
 	}
 
 	// Map additional SWE/System fields

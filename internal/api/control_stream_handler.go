@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 
@@ -40,7 +41,12 @@ func NewControlStreamHandler(
 
 // ListControlStreams handles GET /controlstreams
 func (h *ControlStreamHandler) ListControlStreams(w http.ResponseWriter, r *http.Request) {
-	params := queryparams.ControlStreamsQueryParams{}.BuildFromRequest(r)
+	params, err := queryparams.ControlStreamsQueryParams{}.BuildFromRequest(r, h.cfg.API.DefaultLimit)
+	if err != nil {
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, map[string]string{"error": err.Error()})
+		return
+	}
 
 	controlStreams, total, err := h.repo.List(params, nil)
 	if err != nil {
@@ -72,7 +78,12 @@ func (h *ControlStreamHandler) ListSystemControlStreams(w http.ResponseWriter, r
 	if systemID == "" {
 		systemID = chi.URLParam(r, "id")
 	}
-	params := queryparams.ControlStreamsQueryParams{}.BuildFromRequest(r)
+	params, err := queryparams.ControlStreamsQueryParams{}.BuildFromRequest(r, h.cfg.API.DefaultLimit)
+	if err != nil {
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, map[string]string{"error": err.Error()})
+		return
+	}
 
 	controlStreams, total, err := h.repo.List(params, &systemID)
 	if err != nil {
@@ -134,16 +145,12 @@ func (h *ControlStreamHandler) CreateControlStream(w http.ResponseWriter, r *htt
 	cs, err := h.fc.Deserialize(contentType, r.Body)
 	if err != nil {
 		h.logger.Error("Failed to deserialize control stream", zap.Error(err))
-		render.Status(r, http.StatusBadRequest)
-		render.JSON(w, r, map[string]string{"error": "Invalid request body"})
+		writeDeserializeError(w, r, err)
 		return
 	}
 
 	if systemID != "" {
 		cs.SystemID = &systemID
-		if cs.SystemLink == nil {
-			cs.SystemLink = &common_shared.Link{Href: "systems/" + systemID}
-		}
 	}
 
 	if err := h.repo.Create(cs); err != nil {
@@ -173,14 +180,12 @@ func (h *ControlStreamHandler) UpdateControlStream(w http.ResponseWriter, r *htt
 	cs, err := h.fc.Deserialize(contentType, r.Body)
 	if err != nil {
 		h.logger.Error("Failed to deserialize control stream", zap.Error(err))
-		render.Status(r, http.StatusBadRequest)
-		render.JSON(w, r, map[string]string{"error": "Invalid request body"})
+		writeDeserializeError(w, r, err)
 		return
 	}
 
 	cs.ID = id
-	if cs.SystemLink == nil {
-		cs.SystemLink = existing.SystemLink
+	if cs.SystemID == nil {
 		cs.SystemID = existing.SystemID
 	}
 	if err := h.repo.Update(cs); err != nil {
@@ -198,9 +203,18 @@ func (h *ControlStreamHandler) DeleteControlStream(w http.ResponseWriter, r *htt
 	id := chi.URLParam(r, "controlStreamId")
 	cascade := r.URL.Query().Get("cascade") == "true"
 	if err := h.repo.Delete(id, cascade); err != nil {
-		h.logger.Error("Failed to delete control stream", zap.String("id", id), zap.Error(err))
-		render.Status(r, http.StatusInternalServerError)
-		render.JSON(w, r, map[string]string{"error": "Failed to delete control stream"})
+		switch {
+		case errors.Is(err, repository.ErrNotFound):
+			render.Status(r, http.StatusNotFound)
+			render.JSON(w, r, map[string]string{"error": "Control stream not found"})
+		case errors.Is(err, repository.ErrHasChildren):
+			render.Status(r, http.StatusConflict)
+			render.JSON(w, r, map[string]string{"error": "Control stream has dependent records; use ?cascade=true to delete"})
+		default:
+			h.logger.Error("Failed to delete control stream", zap.String("id", id), zap.Error(err))
+			render.Status(r, http.StatusInternalServerError)
+			render.JSON(w, r, map[string]string{"error": "Failed to delete control stream"})
+		}
 		return
 	}
 

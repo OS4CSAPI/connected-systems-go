@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 
@@ -34,7 +35,12 @@ func NewDatastreamHandler(cfg *config.Config, logger *zap.Logger, repo *reposito
 }
 
 func (h *DatastreamHandler) ListDatastreams(w http.ResponseWriter, r *http.Request) {
-	params := queryparams.DatastreamsQueryParams{}.BuildFromRequest(r)
+	params, err := queryparams.DatastreamsQueryParams{}.BuildFromRequest(r, h.cfg.API.DefaultLimit)
+	if err != nil {
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, map[string]string{"error": err.Error()})
+		return
+	}
 
 	datastreams, total, err := h.repo.List(params, nil)
 	if err != nil {
@@ -65,7 +71,12 @@ func (h *DatastreamHandler) ListSystemDatastreams(w http.ResponseWriter, r *http
 	if systemID == "" {
 		systemID = chi.URLParam(r, "id")
 	}
-	params := queryparams.DatastreamsQueryParams{}.BuildFromRequest(r)
+	params, err := queryparams.DatastreamsQueryParams{}.BuildFromRequest(r, h.cfg.API.DefaultLimit)
+	if err != nil {
+		render.Status(r, http.StatusBadRequest)
+		render.JSON(w, r, map[string]string{"error": err.Error()})
+		return
+	}
 
 	datastreams, total, err := h.repo.List(params, &systemID)
 	if err != nil {
@@ -125,16 +136,12 @@ func (h *DatastreamHandler) CreateDatastream(w http.ResponseWriter, r *http.Requ
 	datastream, err := h.fc.Deserialize(contentType, r.Body)
 	if err != nil {
 		h.logger.Error("Failed to deserialize datastream", zap.Error(err))
-		render.Status(r, http.StatusBadRequest)
-		render.JSON(w, r, map[string]string{"error": "Invalid request body"})
+		writeDeserializeError(w, r, err)
 		return
 	}
 
 	if systemID != "" {
 		datastream.SystemID = &systemID
-		if datastream.SystemLink == nil {
-			datastream.SystemLink = &common_shared.Link{Href: "systems/" + systemID}
-		}
 	}
 
 	if err := h.repo.Create(datastream); err != nil {
@@ -163,14 +170,12 @@ func (h *DatastreamHandler) UpdateDatastream(w http.ResponseWriter, r *http.Requ
 	datastream, err := h.fc.Deserialize(contentType, r.Body)
 	if err != nil {
 		h.logger.Error("Failed to deserialize datastream", zap.Error(err))
-		render.Status(r, http.StatusBadRequest)
-		render.JSON(w, r, map[string]string{"error": "Invalid request body"})
+		writeDeserializeError(w, r, err)
 		return
 	}
 
 	datastream.ID = id
-	if datastream.SystemLink == nil {
-		datastream.SystemLink = existing.SystemLink
+	if datastream.SystemID == nil {
 		datastream.SystemID = existing.SystemID
 	}
 	if err := h.repo.Update(datastream); err != nil {
@@ -187,9 +192,18 @@ func (h *DatastreamHandler) DeleteDatastream(w http.ResponseWriter, r *http.Requ
 	id := chi.URLParam(r, "dataStreamId")
 	cascade := r.URL.Query().Get("cascade") == "true"
 	if err := h.repo.Delete(id, cascade); err != nil {
-		h.logger.Error("Failed to delete datastream", zap.String("id", id), zap.Error(err))
-		render.Status(r, http.StatusInternalServerError)
-		render.JSON(w, r, map[string]string{"error": "Failed to delete datastream"})
+		switch {
+		case errors.Is(err, repository.ErrNotFound):
+			render.Status(r, http.StatusNotFound)
+			render.JSON(w, r, map[string]string{"error": "Datastream not found"})
+		case errors.Is(err, repository.ErrHasChildren):
+			render.Status(r, http.StatusConflict)
+			render.JSON(w, r, map[string]string{"error": "Datastream has dependent records; use ?cascade=true to delete"})
+		default:
+			h.logger.Error("Failed to delete datastream", zap.String("id", id), zap.Error(err))
+			render.Status(r, http.StatusInternalServerError)
+			render.JSON(w, r, map[string]string{"error": "Failed to delete datastream"})
+		}
 		return
 	}
 

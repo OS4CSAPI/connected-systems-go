@@ -21,7 +21,6 @@ const (
 func baseDatastreamPayload() map[string]interface{} {
 	uniqueID := uuid.NewString()
 	return map[string]interface{}{
-		"uid":        "urn:uuid:" + uniqueID,
 		"name":       "Datastream " + uniqueID[:8],
 		"type":       "observation",
 		"outputName": "weather-output",
@@ -224,7 +223,7 @@ func TestDatastream_CreateUnderSystem_AndSchemaRoundTrip(t *testing.T) {
 		rel, _ := link["rel"].(string)
 		if rel == "ogc-rel:observations" || rel == "observations" {
 			obsHref, _ := link["href"].(string)
-			assert.Equal(t, "/datastreams/"+datastreamID+"/observations", obsHref)
+			assert.Equal(t, testServer.URL+"/datastreams/"+datastreamID+"/observations", obsHref)
 			foundObservationsLink = true
 			break
 		}
@@ -304,4 +303,45 @@ func TestDatastream_DeleteCascade_RemovesObservations(t *testing.T) {
 	require.NoError(t, err)
 	defer getObsResp.Body.Close()
 	assert.Equal(t, http.StatusNotFound, getObsResp.StatusCode)
+}
+
+// =============================================================================
+// ?phenomenonTime=latest must return only the single datastream with the
+// most-recent phenomenon_time_start value regardless of insertion order.
+// =============================================================================
+
+func TestDatastream_List_LatestPhenomenonTime_ReturnsMostRecent(t *testing.T) {
+	cleanupDB(t)
+
+	systemID := createSystemViaAPI(t, "/systems", baseSystemPayload("DS Latest System"))
+
+	dsWithPhenomenonTime := func(start, end string) map[string]interface{} {
+		p := baseDatastreamPayload()
+		p["phenomenonTime"] = []string{start, end}
+		return p
+	}
+
+	// Create 3 datastreams with phenomenonTime starts in non-monotonic order.
+	createDatastreamViaAPI(t, "/systems/"+systemID+"/datastreams", dsWithPhenomenonTime("2025-01-01T00:00:00Z", "2025-12-31T23:59:59Z"))
+	newestID := createDatastreamViaAPI(t, "/systems/"+systemID+"/datastreams", dsWithPhenomenonTime("2027-01-01T00:00:00Z", "2027-12-31T23:59:59Z"))
+	createDatastreamViaAPI(t, "/systems/"+systemID+"/datastreams", dsWithPhenomenonTime("2024-01-01T00:00:00Z", "2024-12-31T23:59:59Z"))
+
+	req, err := http.NewRequest(http.MethodGet, testServer.URL+"/datastreams?phenomenonTime=latest", nil)
+	require.NoError(t, err)
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := http.DefaultClient.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	require.Equal(t, http.StatusOK, resp.StatusCode)
+
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+
+	items := getJSONItems(t, body)
+	require.Equal(t, 1, len(items), "expected exactly one datastream for ?phenomenonTime=latest")
+
+	ds, ok := items[0].(map[string]interface{})
+	require.True(t, ok)
+	assert.Equal(t, newestID, ds["id"], "expected the datastream with the most-recent phenomenonTime start")
 }
