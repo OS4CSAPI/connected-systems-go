@@ -165,3 +165,54 @@ SUMMARY (post-fix):
 - **Filed:** 2026-05-05
 
 ---
+
+---
+
+## report-04-systemevent-not-in-deletecascade
+
+**Audit date:** 2026-05-05
+**Verdict:** `pass`
+**Filing-ready:** yes
+
+### §2.1 Mechanical findings (subagent, verbatim)
+
+Pre-flight: `git log -1 upstream/main --format='%H'` → `df6da0dff8e2d3e76b64b00f856c0d43ed644f6d` — matches stated audit reference HEAD. ✓
+
+- **CHECK-1 (Header table)** — backlog/plan paths OK; repo handle / external pre-work URL `N/A`.
+- **CHECK-2 (Source fork issue numbers)** — `OS4CSAPI/connected-systems-go#16` referenced 3× (header, §1 L73, §8); all `N/A: gh unavailable`.
+- **CHECK-3 (Commit SHAs)** — `df6da0d`, `fe9fbd0`, `c2ab201`, `1b2b614`, `e0f31c4`, `5b5fb94`, `dacae7b` all **OK** (reachable + ancestors of `upstream/main`).
+- **CHECK-4 (Commit messages)** — all 7 quoted subjects match `git log -1 <SHA> --format='%s'` verbatim **OK** (ellipsis-vs-three-dots non-substantive).
+- **CHECK-5 (File paths)** — `internal/repository/system_repository.go`, `internal/model/domains/system_event.go`, `internal/repository/system_event_repository.go` all **OK**.
+- **CHECK-6/CHECK-7 (Code snippets)** — `deleteCascade` Select-String block (recursive Systems, SamplingFeature parent_system_id, deleteSystemDatastreams, deleteSystemControlStreams, SystemHistoryRevision, system_deployments, system_procedures, final `tx.Delete(&domains.System{}, "id = ?", systemID)`) all verified present **OK**; `SystemEvent` / `system_events` zero-match in `system_repository.go` reproduced **OK**; `SystemEvent` struct snippet (`Base`, `SystemID string \`gorm:"type:varchar(255);index;not null" json:"-"\``) matches upstream byte-for-byte **OK**; 6-line `git log` of `system_repository.go` matches **OK**.
+- **CHECK-8 (Cross-references)** — `../upstream-followup-backlog.md`, `../upstream-issues/plan-04-...md`, `../evidence/issue-002/fk-constraints-head-2026-04-30.txt`, `../evidence/issue-016/live-test-2026-04-30.md`, `../evidence/issue-016/static-analysis-2026-04-30.md`, `../issue-evaluations/issue-016.md` all resolve **OK**; external pre-work URL `N/A`.
+- **CHECK-9 (Spec citations enumerated, not validated)** — OGC 23-001 (CSAPI Part 1 §"System events"); OGC 23-002 (CSAPI Part 2 SystemEvent schema); OAS 3.0.3 / OGC 19-072 / RFC 7493 cited as **out-of-scope**.
+- **CHECK-10 (Internal consistency §1 vs §10)** — HEAD SHA, pivotal `fe9fbd0`, file paths, `SystemID` gorm tag, child-enumeration count (7 present + SystemEvent missing = expected 8), recommended-fix snippet, P2 severity — all **OK** (consistent).
+
+```
+SUMMARY:
+- Checks attempted: 50
+- OK: 44
+- FAIL: 0
+- N/A: 6 (3× gh unavailable for #16, repo handle, external URL, deferred CHECK-1)
+- Critical concerns: none
+```
+
+### §2.2 Subjective findings (orchestrator)
+
+| Axis | Finding |
+|---|---|
+| Severity calibration (P2) | **Sound.** Silent integrity loss on publicly invokable cascade-delete path; no 5xx, no client signal. P1 reserved for active-data-corruption-on-write or auth-bypass; P3 too soft for silent orphan on every cascade delete. |
+| Framing accuracy | **Sound.** "Completing 3b" framing is precedent-bound: `fe9fbd0` adopted Approach 3b, this filing finishes the enumeration. Cites maintainer's own merged commit as the model. Approach 3a (FK constraints) deferred to backlog #14 with one-line mention. |
+| Scope guard (§7) | **Sound.** Carves out schema migration, FK addition, Approach 3a vs 3b re-litigation, non-cascade `Delete` branch (rejected ErrHasChildren on grounds SystemEvent is value-class child). §1 audit confirms SystemEvent is sole gap. |
+| Recommended fix realism | **Sound.** Three-line append mirroring `SystemHistoryRevision`. Zero-risk by construction; same shape as 7 sibling deletes already merged. |
+| Public extract self-containment | **Sound.** §10 stands alone — `fe9fbd0` Approach 3b context, deleteCascade enumeration with the gap, struct field with `not null` no-FK, recommended fix mirroring sibling, OGC 23-001 + 23-002 spec authority, P2 severity rationale. |
+| Companion-report cross-references | Parent #16 (closed) cited; backlog #14 (Approach 3a) deferred. Issue #2 evidence pack (FK constraints) cross-linked for the no-FK claim. All resolve. |
+
+### Action items
+None.
+
+### Filed
+- **Upstream issue:** <https://github.com/SomethingCreativeStudios/connected-systems-go/issues/4>
+- **Filed:** 2026-05-05
+
+---

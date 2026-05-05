@@ -364,3 +364,12 @@ directly.
 - Plan: [`docs/research/upstream-issues/plan-04-systemevent-not-in-deletecascade.md`](../upstream-issues/plan-04-systemevent-not-in-deletecascade.md)
 - Backlog: [`docs/research/upstream-followup-backlog.md`](../upstream-followup-backlog.md) #7
 - Related (separate filing): backlog #14 (Approach 3a FK constraints — would prevent this class of follow-up structurally).
+
+---
+
+## 11. Filing record
+
+- Upstream issue: <https://github.com/SomethingCreativeStudios/connected-systems-go/issues/4>
+- Filed: 2026-05-05
+- Filed by: OS4CSAPI fork research stream (via MCP GitHub integration)
+- Audit verdict: pass (see [`../report-audit-log.md`](../report-audit-log.md#report-04-systemevent-not-in-deletecascade))
