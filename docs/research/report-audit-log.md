@@ -56,7 +56,8 @@ SUMMARY:
 ### Action items
 None.
 
-### User sign-off
-Pending — user to copy §10 into `https://github.com/SomethingCreativeStudios/connected-systems-go/issues/new` and reply with filed issue URL for filing-record entry.
+### Filed
+- **Upstream issue:** <https://github.com/SomethingCreativeStudios/connected-systems-go/issues/1>
+- **Filed:** 2026-05-05
 
 ---

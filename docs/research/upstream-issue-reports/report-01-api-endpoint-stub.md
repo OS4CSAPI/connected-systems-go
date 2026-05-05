@@ -428,6 +428,11 @@ a cs-go upstream defect, not a fork-only concern).
 
 ## 11. Filing record
 
+- **Upstream issue:** <https://github.com/SomethingCreativeStudios/connected-systems-go/issues/1>
+- **Filed:** 2026-05-05
+- **Filed by:** OS4CSAPI fork research stream (via MCP GitHub integration)
+- **Audit verdict:** `pass` (see [`../report-audit-log.md`](../report-audit-log.md#report-01-api-endpoint-stub))
+
 _(populated after Step 4.3 — leave empty until issue is filed)_
 
 - Upstream issue URL: _pending_
