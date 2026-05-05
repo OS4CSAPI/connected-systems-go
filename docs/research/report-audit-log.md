@@ -61,3 +61,55 @@ None.
 - **Filed:** 2026-05-05
 
 ---
+
+---
+
+## report-02-datastream-dangling-unique-identifier-sql
+
+**Audit date:** 2026-05-05
+**Verdict:** `pass`
+**Filing-ready:** yes
+
+### §2.1 Mechanical findings (subagent, verbatim)
+
+Pre-flight: `git log -1 upstream/main --format='%H'` → `df6da0dff8e2d3e76b64b00f856c0d43ed644f6d` — matches stated audit reference HEAD. ✓
+
+- **CHECK-1 (Header table paths)** — all in-repo paths OK; `SomethingCreativeStudios/connected-systems-go` is a repo handle.
+- **CHECK-2 (Source fork issue numbers)** — `OS4CSAPI/connected-systems-go#12` referenced 3× (L20, L217, ~L376); all `N/A: gh unavailable`.
+- **CHECK-3 (Commit SHAs)** — `df6da0d`, `2dc09f7`, `d2d1347`, `1562201`, `dacae7b`, `f2cf1c3` all **OK** (reachable + ancestor of `upstream/main`).
+- **CHECK-4 (Commit messages)** — all 6 quoted subjects match `git log -1 <SHA> --format='%s'` verbatim **OK**.
+- **CHECK-5 (File paths)** — `internal/repository/datastream_repository.go`, `internal/model/domains/datastream.go` both **OK**.
+- **CHECK-6 (Line numbers)** — report uses `Select-String -Context` blocks without absolute line citations; **N/A** (no explicit `<file>:<line>` references to validate).
+- **CHECK-7 (Code snippets)** — `applyFilters` signature + `Where("id IN ? OR unique_identifier IN ?", ...)` matches upstream verbatim in §1, §2, §10; `git grep` zero-match for `CommonSSN|UniqueIdentifier|unique_identifier` in `datastream.go` reproduced **OK**; `git log --oneline ... -- datastream.go | head -5` matches the reported 5-line list verbatim **OK**.
+- **CHECK-8 (Cross-references)** — `../upstream-followup-backlog.md` (#4), `../upstream-issues/plan-02-...md`, `../evidence/issue-012/static-analysis-2026-04-30.md`, `../evidence/issue-012/live-test-2026-04-30.md`, `docs/research/issue-evaluations/issue-012.md` all **OK**; external pre-work URL `N/A: out of scope`.
+- **CHECK-9 (Spec citations enumerated, not validated)** — OGC 23-002 (CSAPI Part 2 Datastream schema, `baseStream.json` / `dataStream.json`); OAS 3.0.3 / OGC 19-072 / OGC 23-001 cited as **out-of-scope**.
+- **CHECK-10 (Internal consistency §1 vs §10)** — HEAD SHA, file paths, `1562201` framing as removal point, `applyFilters` snippet text, `git grep` no-matches + 5-line log, OGC 23-002 spec citation — all **OK** (identical between §1, §2, and §10).
+
+```
+SUMMARY:
+- Checks attempted: 36
+- OK: 28
+- FAIL: 0
+- N/A: 8 (3× gh unavailable for #12, repo handle, external URL, no explicit line-number citations, pre-work URL)
+- Critical concerns: none
+```
+
+### §2.2 Subjective findings (orchestrator)
+
+| Axis | Finding |
+|---|---|
+| Severity calibration (P2) | **Sound.** §9 Q2 confirmed P2 over P3-latent: documented filter parameter returns 500 deterministically on fresh deploys. Plan's backlog-accuracy flag corroborated. |
+| Framing accuracy | **Sound.** Cleanup-miss framing with HTTP-500 impact front-loaded. `1562201`-as-the-removal-commit is verified. AutoMigrate caveat (§3 + §10) preempts dismissal-by-stale-dev-DB. |
+| Scope guard (§7) | **Sound.** Carves out domain model, AutoMigrate, other repos' filter logic, ControlStream sibling, `uid` field re-introduction. ControlStream cross-reference points correctly to backlog #5 / report-03. |
+| Recommended fix realism | **Sound.** One-line removal of the `OR unique_identifier IN ?` clause. Zero-risk by construction (column does not exist in post-`1562201` schema). Option B (drop entire `if` block) explicitly rejected as architectural / not-our-call. |
+| Public extract self-containment | **Sound.** §10 stands alone — `1562201` reference, `applyFilters` snippet, `git grep` + `git log` evidence, three live curl probes with caveat, spec authority (OGC 23-002 no-`uid`), one-line fix, scope guard, validation chain. |
+| Companion-report cross-references | ControlStream sibling deferred to report-03 / backlog #5. Other Adjacent Findings B (DELETE 500) and C (3 orphaned test datastreams) explicitly logged as out-of-scope for this filing. |
+
+### Action items
+None.
+
+### Filed
+- **Upstream issue:** <https://github.com/SomethingCreativeStudios/connected-systems-go/issues/2>
+- **Filed:** 2026-05-05
+
+---

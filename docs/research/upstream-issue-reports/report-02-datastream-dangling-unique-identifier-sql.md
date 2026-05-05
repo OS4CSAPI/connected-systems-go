@@ -392,7 +392,7 @@ Datastream UID uniqueness, not this SQL — see the eval for context).
 
 ## 11. Filing record
 
-_(populated after Step 4.3 — leave empty until issue is filed)_
-
-- Upstream issue URL: _pending_
-- Filed: _pending_
+- Upstream issue: <https://github.com/SomethingCreativeStudios/connected-systems-go/issues/2>
+- Filed: 2026-05-05
+- Filed by: OS4CSAPI fork research stream (via MCP GitHub integration)
+- Audit verdict: pass (see [`../report-audit-log.md`](../report-audit-log.md#report-02-datastream-dangling-unique-identifier-sql))
