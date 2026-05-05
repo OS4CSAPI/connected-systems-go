@@ -90,19 +90,34 @@ anchors → one-line summary → status.
 - **Status:** Ready to file after closure pass. Small addition to
   `system_repository.go` `deleteCascade`'s child list.
 
-### 8. Malformed UUID path-param → 400 (currently 500)
+### 8. Malformed UUID path-param → 400 (currently 500) — **CLOSED, NOT A DEFECT**
 - **Source:** Issue #17 closure.
-- **Category:** Defect (P3 — UX / contract).
-- **Summary:** `DELETE /datastreams/not-a-uuid` and similar produce SQLSTATE
-  `22P02` (`invalid_text_representation`) at the DB, which falls through
-  `errors.go`'s typed-sentinel switch (which only knows `ErrNotFound`,
-  `ErrHasChildren`, `isFKViolation` for 23503) to the default-500 arm. Should
-  return 400. `git grep -E 'uuid\.Parse|22P02|invalid_text_representation'
-  upstream/main -- internal/api/` returns zero matches. Cleanest fix is
-  `uuid.Parse(id)` at handler entry returning 400, short-circuiting the DB
-  round trip. Affects all path-param UUID handlers (DELETE, GET-by-id, PUT,
-  PATCH).
-- **Status:** Ready to file after closure pass.
+- **Category:** ~~Defect (P3 — UX / contract).~~ **Withdrawn 2026-05-05.**
+- **Original summary:** `DELETE /datastreams/not-a-uuid` and similar were
+  expected to produce SQLSTATE `22P02` (`invalid_text_representation`) at
+  the DB and fall through to a default-500 arm.
+- **Re-verification finding (2026-05-05, `upstream/main` HEAD `df6da0d`):**
+  The premise is wrong. CSAPI domain types declare their primary key as
+  `ID string gorm:"primaryKey;type:varchar(255)"` (see
+  `internal/model/domains/common.go:12` and `collection.go:9`), **not**
+  PostgreSQL `uuid` type. A non-UUID path parameter is therefore a valid
+  `varchar(255)` value that simply doesn't match any row; PostgreSQL
+  never raises `22P02`. Live test against `csapi-go-upstream` (`df6da0d`)
+  confirms all four observable shapes already return **HTTP 404
+  ErrNotFound**, not 500:
+  ```text
+  DELETE /datastreams/not-a-uuid     HTTP 404
+  GET    /datastreams/not-a-uuid     HTTP 404
+  DELETE /systems/not-a-uuid         HTTP 404
+  GET    /systems/not-a-uuid         HTTP 404
+  GET    /controlstreams/not-a-uuid  HTTP 404
+  ```
+  Plan-05's §6 stop-clause ("If live returns 400 instead of 500, the
+  maintainer has fixed it… stop") applies here in spirit: the 22P02
+  channel never existed because the column type is text, not uuid.
+- **Decision:** Do not file. No defect to report. Plan-05 is shelved;
+  no report-05 produced.
+- **Status:** **Closed — not a defect.**
 
 ### 9. Legacy `ToTimeRange` silent-discard year-0001 pattern
 - **Source:** Issue #18 closure (adjacent finding).
