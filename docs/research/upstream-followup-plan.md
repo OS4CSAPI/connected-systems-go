@@ -78,6 +78,13 @@ category and severity.
 
 ## Phase 3 — Filing protocol per item
 
+**Standing decision (2026-05-05):** All upstream submissions are filed as
+**issues**, never as direct pull requests — even for one-line fixes. The
+maintainer owns the canonical repo and decides what merges; our job is to
+surface findings with full evidence and let them choose the fix shape and
+timing. Direct PRs would skip that triage step and risk burning maintainer
+trust on unsolicited changes.
+
 For each filing:
 
 1. **Re-verify on `upstream/main` HEAD before filing** — defect may have been
@@ -135,11 +142,14 @@ After Tier A + B filed:
 
 1. **Filing cadence** — file Tier A immediately as separate issues, or wait
    until #22 settles to bundle context?
-2. **PR vs. issue strategy** — for one-line fixes (e.g. backlog #5:
-   `json:"-"` on ControlStream), file as direct PR instead of issue?
-3. **Tier C ambition** — file all four, or only #15+#16 (which tie to
+2. **Tier C ambition** — file all four, or only #15+#16 (which tie to
    maintainer's own *"not fully enriched"* self-ack and have higher
    acceptance odds)?
+
+## Settled decisions
+
+- **2026-05-05** — All upstream submissions are filed as issues, never
+  direct PRs. Rationale recorded in Phase 3.
 
 ---
 
