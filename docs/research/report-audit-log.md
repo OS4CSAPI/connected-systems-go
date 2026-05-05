@@ -113,3 +113,55 @@ None.
 - **Filed:** 2026-05-05
 
 ---
+
+---
+
+## report-03-controlstream-systems-json-leak
+
+**Audit date:** 2026-05-05
+**Verdict:** `pass` (after in-place citation fixes)
+**Filing-ready:** yes
+
+### §2.1 Mechanical findings (subagent, verbatim)
+
+Pre-flight: `git log -1 upstream/main --format='%H'` → `df6da0dff8e2d3e76b64b00f856c0d43ed644f6d` — matches stated audit reference HEAD. ✓
+
+- **CHECK-1 (Header table)** — backlog/plan paths OK; repo handle / external pre-work URL `N/A`.
+- **CHECK-2 (Source fork issue numbers)** — `OS4CSAPI/connected-systems-go#15` referenced 3× (header, §8, §10); all `N/A: gh unavailable`.
+- **CHECK-3 (Commit SHAs)** — `df6da0d`, `d2d1347`, `dacae7b`, `f2cf1c3`, `2dc09f7` all **OK** (reachable + ancestors of `upstream/main`).
+- **CHECK-4 (Commit messages)** — all 5 quoted subjects match `git log -1 <SHA> --format='%s'` verbatim **OK** (`2dc09f7` quote uses Unicode ellipsis vs. literal `...`; non-substantive).
+- **CHECK-5 (File paths)** — `internal/model/domains/control_stream.go`, `internal/model/domains/datastream.go` both **OK**.
+- **CHECK-6 (Line numbers)** — no explicit `<file>:<line>` citations; subagent confirmed quoted struct-tag string is at `control_stream.go:52` and `datastream.go:56`. **N/A** for absolute drift; **OK** for content match.
+- **CHECK-7 (Code snippets)** — `Systems []System \`gorm:"many2many:system_controlstreams;"\`` (current) and `Systems []System \`gorm:"many2many:system_datastreams;" json:"-"\`` (parent post-fix) match upstream verbatim; `2dc09f7 --stat` confirms only `datastream.go` was touched **OK**; live curl bodies `N/A` (live capture).
+- **CHECK-8 (Cross-references)** — initial pass returned 2× FAIL on `static-analysis-2026-04-30.md §3.4` (file has only top-level §3, no `§3.4`); also stale "backlog will be corrected" / "P2 — sibling entry" header line. **All three fixed in-place pre-filing** by replacing `§3.4` → `§3`, restating header severity rationale, and converting backlog-correction language to past tense.
+- **CHECK-9 (Spec citations)** — OGC 23-002 (CSAPI Part 2 `controlStream.json` / `baseStream.json`); RFC 7493 §4.3 (I-JSON); JSON Schema 2020-12 `additionalProperties` semantics; OAS 3.0.3 / OGC 23-001 / OGC 19-072 cited as **out-of-scope**.
+- **CHECK-10 (Internal consistency §1 vs §10)** — HEAD SHA, file paths, parent-fix `2dc09f7`, field name `Systems`, leaked emission `"Systems": null`, struct-tag strings (current vs. proposed), five FK siblings with `json:"-"` — all **OK** (consistent).
+
+```
+SUMMARY (post-fix):
+- Checks attempted: 44
+- OK: 36
+- FAIL: 0 (3 pre-fix FAILs all resolved in-place: §3.4 citation drift ×2, stale header severity language)
+- N/A: 8 (3× gh unavailable for #15, repo handle, external URL, line-content-only matches, live curl)
+- Critical concerns: none
+```
+
+### §2.2 Subjective findings (orchestrator)
+
+| Axis | Finding |
+|---|---|
+| Severity calibration (P3-Minor) | **Sound.** Sibling cannot exceed parent triage; parent #15 was P3-Minor. Eval §3.6 explicitly rejected P2 ("functional or strict-spec impact; neither exists"). |
+| Framing accuracy | **Sound.** Parent-commit-as-precedent narrative is rigorous: `2dc09f7` shape is mirrored exactly. Issue #15's own "file siblings separately" rule cited as the reason for separate filing. |
+| Scope guard (§7) | **Sound.** Single struct-tag append, no logic, no migration. Latent §3.5 hardening explicitly deferred to backlog #6. OSH publisher fleet bootstrap (report-13) noted as out-of-scope. |
+| Recommended fix realism | **Sound.** One-line `json:"-"` append. Zero risk by precedent — same change on parent struct merged cleanly. |
+| Public extract self-containment | **Sound.** §10 stands alone — parent commit reference, side-by-side struct-tag comparison, live curl of both controlstream (with leak) and datastream (without) on the same deployment, OGC 23-002 + RFC 7493 spec authority, one-line fix. |
+| Companion-report cross-references | Parent #15 (closed, fork-side) cited; backlog #6 (latent slices) explicitly out-of-scope; report-13 (OSH publisher) noted as not-yet-affected. All resolve. |
+
+### Action items
+- Pre-filing fixes applied in-place: `§3.4` → `§3` (×2), header severity language past-tense, §8 backlog-status past-tense, §9 question-row past-tense.
+
+### Filed
+- **Upstream issue:** <https://github.com/SomethingCreativeStudios/connected-systems-go/issues/3>
+- **Filed:** 2026-05-05
+
+---

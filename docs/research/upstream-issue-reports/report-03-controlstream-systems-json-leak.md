@@ -20,7 +20,7 @@
 | Source fork issue | `OS4CSAPI/connected-systems-go#15` (closed; sibling defect deferred to separate filing per #15's own scope rule) |
 | Research plan | [`../upstream-issues/plan-03-controlstream-systems-json-leak.md`](../upstream-issues/plan-03-controlstream-systems-json-leak.md) |
 | Target upstream repo | `SomethingCreativeStudios/connected-systems-go` |
-| Severity | **P3-Minor** — matches parent issue #15 triage; corrects backlog's "P2 — sibling" entry (cannot exceed parent severity) |
+| Severity | **P3-Minor** — matches parent issue #15 triage; backlog already corrected from prior "P2 — sibling" classification (sibling cannot exceed parent severity) |
 | Tier | **A** (file first) |
 | Report date | 2026-05-05 |
 | Author | OS4CSAPI fork research stream |
@@ -111,7 +111,7 @@ upstream-pinned deployment.
 
 ## 2. Static evidence
 
-Source: [`../evidence/issue-015/static-analysis-2026-04-30.md`](../evidence/issue-015/static-analysis-2026-04-30.md) §3.4 (refreshed in §1 above).
+Source: [`../evidence/issue-015/static-analysis-2026-04-30.md`](../evidence/issue-015/static-analysis-2026-04-30.md) §3 (refreshed in §1 above).
 
 `internal/model/domains/control_stream.go`, `ControlStream` struct
 (post-`d2d1347`):
@@ -263,13 +263,12 @@ What NOT to touch as part of this filing:
   P3-Minor, and shipped `2dc09f7`. Issue #15's own scope rule —
   "If you find more, file separately, one issue per leaking type" —
   explicitly defers the ControlStream sibling to this filing.
-- Backlog labels this **P2 — sibling of fix that landed on
-  Datastream**. The eval at
+- Backlog originally labeled this **P2 — sibling of fix that landed on
+  Datastream**, since corrected to **P3-Minor** in line with the eval at
   [`../issue-evaluations/issue-015.md`](../issue-evaluations/issue-015.md)
-  §3.6 explicitly concludes "P3-Minor is exactly right. P2 would imply
+  §3.6, which concludes "P3-Minor is exactly right. P2 would imply
   functional or strict-spec impact; neither exists." Sibling cannot
-  exceed parent severity. Backlog entry will be corrected to
-  P3-Minor in tandem with this filing.
+  exceed parent severity.
 - The OSHConnect-Python publisher fleet (cf. report-13) does not
   POST to `/controlstreams` in any current bootstrap, so the leak
   has not surfaced operationally on the fork's live deployments.
@@ -281,7 +280,7 @@ What NOT to touch as part of this filing:
 
 | Plan §8 question | Resolution |
 |---|---|
-| Severity declaration — backlog says P2, eval and parent say P3-Minor. | **P3-Minor.** Sibling cannot exceed parent triage. Backlog flag from plan §1 confirmed; backlog entry to be updated in tandem with this filing. |
+| Severity declaration — backlog originally said P2, eval and parent say P3-Minor. | **P3-Minor.** Sibling cannot exceed parent triage. Backlog entry already corrected to P3-Minor with note retaining prior P2 classification for traceability. |
 | Cite parent commit `2dc09f7` as precedent? | **Yes — lead with it.** Justifies both spec posture and fix shape from the maintainer's own merged work. |
 | Bundle §3.5 latent-slices hardening? | **No.** Out-of-scope mention only; backlog item #6 is the dedicated tracker. |
 | Live evidence required, or is static-only sufficient? | **Live captured this round.** cs-go-upstream had a controlstream available from the placeholder seed; live capture above shows the leak deterministically. |
@@ -422,6 +421,15 @@ the non-canonical key.
 **Validation chain:**
 
 - Eval: [`docs/research/issue-evaluations/issue-015.md`](../issue-evaluations/issue-015.md) §3.4, §3.6, §3.7
-- Evidence: [`docs/research/evidence/issue-015/static-analysis-2026-04-30.md`](../evidence/issue-015/static-analysis-2026-04-30.md) §3.4
+- Evidence: [`docs/research/evidence/issue-015/static-analysis-2026-04-30.md`](../evidence/issue-015/static-analysis-2026-04-30.md) §3
 - Plan: [`docs/research/upstream-issues/plan-03-controlstream-systems-json-leak.md`](../upstream-issues/plan-03-controlstream-systems-json-leak.md)
 - Backlog: [`docs/research/upstream-followup-backlog.md`](../upstream-followup-backlog.md) #5
+
+---
+
+## 11. Filing record
+
+- Upstream issue: <https://github.com/SomethingCreativeStudios/connected-systems-go/issues/3>
+- Filed: 2026-05-05
+- Filed by: OS4CSAPI fork research stream (via MCP GitHub integration)
+- Audit verdict: pass (see [`../report-audit-log.md`](../report-audit-log.md#report-03-controlstream-systems-json-leak))
