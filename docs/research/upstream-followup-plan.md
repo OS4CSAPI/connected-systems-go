@@ -110,11 +110,66 @@ a time**, not in batches. Same careful pace we used during the closure
 pass. No drafting begins on issue N+1 until issue N is filed and the
 backlog updated.
 
-For each filing (single item or bundle):
+**Standing decision (2026-05-05):** Each filing begins with a dedicated
+**per-issue research plan** committed to the fork **before** any drafting
+work starts. This is a sources-and-organization document, not a
+pre-written issue. Workflow per item:
 
-1. **Re-verify on `upstream/main` HEAD before filing** — defect may have
-   been fixed in passing.
-2. **Compose using established issue-template format** with:
+### Step 4.1 — Author the research plan
+
+Create `docs/research/upstream-issues/plan-NN-<slug>.md` (where `NN` is the
+sequence number 01..N+ across the filing pass and `<slug>` is a kebab-case
+short title). The plan **identifies and organizes all sources of
+information** that will be reviewed during issue drafting. It does **not**
+attempt to write the issue itself.
+
+The plan must enumerate:
+
+1. **Backlog entry** being addressed (item number + summary line copied
+   verbatim from `upstream-followup-backlog.md`).
+2. **Source fork issue(s)** — original `OS4CSAPI/connected-systems-go`
+   issue number(s) whose closure surfaced this finding. List every one
+   for bundles.
+3. **Existing evaluation artifacts** — paths to the relevant
+   `docs/research/issue-evaluations/issue-NNN.md` and
+   `docs/research/evidence/issue-NNN/*` files, with a one-line note on
+   what each provides.
+4. **Maintainer triage signal** — verbatim quote (if any) from the
+   maintainer on the source fork issue, with a note on how it shapes the
+   filing.
+5. **Upstream commits relevant to the area** — SHAs and one-line
+   descriptions of any upstream commits that touched adjacent code, so
+   we can cite them in the issue body for context (e.g. *"sibling of
+   `2dc09f7`"*).
+6. **Re-verification commands** — the exact `git`/`grep`/`curl`
+   commands the drafter must run on `upstream/main` HEAD before
+   writing, to confirm the defect is still live.
+7. **Spec-authority sources** — URLs / file paths for any OAS, OGC, or
+   RFC documents we'll cite.
+8. **Open questions** — anything that needs clarification before
+   drafting can finalize.
+9. **Drafting checklist** — the sub-bullets of the issue template
+   (Context / Claim / Static evidence / Live evidence / Spec authority /
+   Recommended fix / Scope guard) with a one-line note per bullet on
+   what content will land there. This is the bridge from research plan
+   to draft.
+
+### Step 4.2 — Drafting (separate session/turn)
+
+Only after the research plan is committed and the user confirms it
+captures everything needed do we begin drafting the issue body itself.
+Drafting is a separate operation: open a working buffer, fill in each
+template section using the sources the plan enumerated, run the
+re-verification commands, settle any open questions.
+
+### Step 4.3 — File the issue
+
+Once drafted and reviewed:
+
+1. **Re-verify on `upstream/main` HEAD** — defect may have been fixed
+   in passing.
+2. **Post the issue** to `SomethingCreativeStudios/connected-systems-go`
+   using the established template format:
    - Context
    - Claim
    - Static evidence (file:line)
@@ -122,15 +177,22 @@ For each filing (single item or bundle):
    - Spec authority (if applicable)
    - Recommended fix
    - Scope guard ("what NOT to touch")
-3. **Reference research artifacts**:
-   - `docs/research/issue-evaluations/issue-NNN.md`
-   - `docs/research/evidence/issue-NNN/*`
-   so the maintainer has the full validation chain.
-4. **Cross-reference original `OS4CSAPI/connected-systems-go` issue number**
-   for traceability back to the closure pass. For bundles, list both
-   source-issue numbers.
-5. **After filing**, move backlog item(s) from "Open items" → "Closed /
-   superseded" with the new upstream issue number.
+3. **Reference research artifacts** — link to the
+   `docs/research/issue-evaluations/issue-NNN.md` and
+   `docs/research/evidence/issue-NNN/*` paths so the maintainer has
+   the full validation chain.
+4. **Cross-reference** the original `OS4CSAPI/connected-systems-go`
+   issue number(s).
+
+### Step 4.4 — Update tracking
+
+After filing:
+
+1. Move the backlog item from "Open items" → "Closed / superseded" with
+   the new upstream issue number.
+2. Append a one-line entry to the per-issue research plan recording the
+   filed upstream issue URL and date, so the plan file is the durable
+   record of "what we filed and why" for that item.
 
 ---
 
@@ -166,6 +228,10 @@ _(none currently)_
   maintainer engagement signal per Phase 5).
 - **2026-05-05** — Backlog filing does not wait on #10 or #22 settling.
   Phase 1 and Phases 2-5 run in parallel.
+- **2026-05-05** — Each upstream filing begins with a dedicated per-issue
+  research plan at `docs/research/upstream-issues/plan-NN-<slug>.md`.
+  The plan identifies sources only; drafting is a separate step.
+  Recorded in Phase 4 (Step 4.1).
 
 ---
 
