@@ -59,11 +59,15 @@ anchors → one-line summary → status.
 
 ### 5. ControlStream `Systems` field JSON leak
 - **Source:** Issue #15 closure (§3.4).
-- **Category:** Defect (P2 — sibling of fix that landed on Datastream).
+- **Category:** Defect (**P3-Minor** — sibling of fix that landed on Datastream;
+  severity corrected from initial "P2" to match parent issue #15's accepted
+  triage. Sibling cannot exceed parent severity per eval §3.6.).
 - **Summary:** `2dc09f7` added `json:"-"` to `Datastream.Systems` to prevent
   the GORM many2many slice from serializing into API responses. The exact
   same field exists on `ControlStream` and was not given the same tag, so
-  `GET /controlstreams/{id}` still leaks the join data.
+  `GET /controlstreams/{id}` still leaks the join data as `"Systems": null`
+  at top level.
+- **Reported in:** [`upstream-issue-reports/report-03-controlstream-systems-json-leak.md`](upstream-issue-reports/report-03-controlstream-systems-json-leak.md).
 - **Status:** Ready to file after closure pass. One-line fix.
 
 ### 6. Latent untagged relationship slices (optional hardening)
