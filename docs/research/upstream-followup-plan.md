@@ -123,6 +123,19 @@ short title). The plan **identifies and organizes all sources of
 information** that will be reviewed during issue drafting. It does **not**
 attempt to write the issue itself.
 
+**Mandatory first action when authoring or working from any research
+plan: re-read the curated authoritative-references list at**
+<https://github.com/OS4CSAPI/ogc-client-CSAPI_2/blob/phase-8/docs/research/references.md>.
+
+That file is the canonical inventory of approved spec/standard sources
+(OGC, OAS, RFC, etc.) for this work stream. The agent has a known failure
+mode of "forgetting" which references are authoritative and substituting
+self-located ones mid-task, which corrupts citations. The research plan
+must (a) include a top-of-file directive to re-open the references list
+before each work session on the plan, and (b) record the specific
+entries from that list that this issue will cite, so any later session
+can re-ground without re-deriving the source set.
+
 The plan must enumerate:
 
 1. **Backlog entry** being addressed (item number + summary line copied
@@ -145,7 +158,11 @@ The plan must enumerate:
    commands the drafter must run on `upstream/main` HEAD before
    writing, to confirm the defect is still live.
 7. **Spec-authority sources** — URLs / file paths for any OAS, OGC, or
-   RFC documents we'll cite.
+   RFC documents we'll cite. **Every entry here must trace to the
+   authoritative references list at
+   `OS4CSAPI/ogc-client-CSAPI_2:phase-8/docs/research/references.md`.**
+   If a citation is needed that is not in that list, stop and surface
+   the gap to the user before drafting — do not self-source.
 8. **Open questions** — anything that needs clarification before
    drafting can finalize.
 9. **Drafting checklist** — the sub-bullets of the issue template
