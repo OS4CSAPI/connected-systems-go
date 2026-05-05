@@ -113,7 +113,28 @@ backlog updated.
 **Standing decision (2026-05-05):** Each filing begins with a dedicated
 **per-issue research plan** committed to the fork **before** any drafting
 work starts. This is a sources-and-organization document, not a
-pre-written issue. Workflow per item:
+pre-written issue.
+
+**Standing decision (2026-05-05):** Research output is captured in a
+**per-issue report** (synthesis document) committed to a separate
+subfolder *before* any upstream issue body is drafted. The upstream
+issue links to the report; the report is the durable internal record.
+This separates internal reasoning (alternatives weighed, fork-side
+context, maintainer-triage interpretation) from the public-facing,
+maintainer-ready issue text. If an issue is later rejected or
+re-scoped, the report still stands as the durable artifact.
+
+Per-item layout:
+
+```
+docs/research/
+  upstream-issues/
+    plan-NN-<slug>.md        <- Step 4.1 research plan (sources to review)
+  upstream-issue-reports/
+    report-NN-<slug>.md      <- Step 4.2 synthesis (findings, fix recommendation)
+```
+
+Workflow per item:
 
 ### Step 4.1 — Author the research plan
 
@@ -171,33 +192,72 @@ The plan must enumerate:
    what content will land there. This is the bridge from research plan
    to draft.
 
-### Step 4.2 — Drafting (separate session/turn)
+### Step 4.2 — Conduct research and produce the report
 
-Only after the research plan is committed and the user confirms it
-captures everything needed do we begin drafting the issue body itself.
-Drafting is a separate operation: open a working buffer, fill in each
-template section using the sources the plan enumerated, run the
-re-verification commands, settle any open questions.
+Once the research plan is committed and the user confirms it captures
+everything needed, work through the source inventory in the plan and
+produce a synthesis report at
+`docs/research/upstream-issue-reports/report-NN-<slug>.md` (matching the
+plan's `NN` and `<slug>` exactly).
+
+The report is **internal-facing** — durable record of what was found,
+what was ruled out, what alternatives were considered, what the
+recommended fix is, and why. It is the document the upstream issue
+links to. It is also the document a future session re-grounds from if
+context is lost.
+
+**Mandatory first action when authoring the report: re-read the
+authoritative-references list** (same URL as Step 4.1) and the research
+plan itself. Do not begin synthesis from memory of the plan's contents.
+
+The report must contain, at minimum:
+
+1. **Header block** — backlog item ID, source fork issue refs, plan
+   file path, date authored.
+2. **Re-verification record** — exact commands run, their output (or a
+   trimmed quote of the relevant lines), and the `upstream/main` SHA
+   at the time of verification. This proves the defect was still live
+   when the report was written.
+3. **Static evidence** — file:line citations and the relevant code
+   excerpt(s).
+4. **Live evidence** — request/response excerpt(s) if applicable.
+5. **Spec authority** — verbatim relevant clauses with citation
+   traceable to the references list. Flag any precision adjustments
+   (e.g. "binding `SHALL` from `landing-page` only; cs-go does not
+   declare `/conf/oas30`").
+6. **Alternatives considered** — fix options weighed, with pros/cons
+   and the reasoning behind the ranking. Internal-only content;
+   maintainer doesn't need to see ruled-out paths but we need to
+   preserve the reasoning.
+7. **Recommended fix** — the option we will lead with in the upstream
+   issue, with a one-line rationale.
+8. **Scope guard** — explicit "what NOT to touch" list.
+9. **Fork-side context** — any relevant fork-only state (workarounds
+   shipped, related fork issues, maintainer triage interpretation).
+   Internal-only.
+10. **Open questions resolved** — bullet list of every open question
+    from the research plan, each with its resolution.
+11. **Public-facing extract** — a clearly-marked section containing
+    *only* the content that should land in the upstream issue body, in
+    the issue-template format (Context / Claim / Static evidence /
+    Live evidence / Spec authority / Recommended fix / Scope guard).
+    This is what Step 4.3 mechanically copies into GitHub.
 
 ### Step 4.3 — File the issue
 
 Once drafted and reviewed:
 
 1. **Re-verify on `upstream/main` HEAD** — defect may have been fixed
-   in passing.
+   in passing. Update the report's re-verification section if the SHA
+   has advanced since the report was authored.
 2. **Post the issue** to `SomethingCreativeStudios/connected-systems-go`
-   using the established template format:
-   - Context
-   - Claim
-   - Static evidence (file:line)
-   - Live evidence (if applicable)
-   - Spec authority (if applicable)
-   - Recommended fix
-   - Scope guard ("what NOT to touch")
-3. **Reference research artifacts** — link to the
-   `docs/research/issue-evaluations/issue-NNN.md` and
-   `docs/research/evidence/issue-NNN/*` paths so the maintainer has
-   the full validation chain.
+   using the **public-facing extract** from the report (Step 4.2 §11)
+   verbatim. The issue body is a mechanical copy, not a fresh write.
+3. **Reference research artifacts** — link to:
+   - `docs/research/upstream-issue-reports/report-NN-<slug>.md`
+     (primary — the maintainer-facing synthesis)
+   - `docs/research/issue-evaluations/issue-NNN.md` (if useful)
+   - `docs/research/evidence/issue-NNN/*` (if useful)
 4. **Cross-reference** the original `OS4CSAPI/connected-systems-go`
    issue number(s).
 
@@ -207,9 +267,9 @@ After filing:
 
 1. Move the backlog item from "Open items" → "Closed / superseded" with
    the new upstream issue number.
-2. Append a one-line entry to the per-issue research plan recording the
-   filed upstream issue URL and date, so the plan file is the durable
-   record of "what we filed and why" for that item.
+2. Append a one-line entry at the bottom of the report (and the plan)
+   recording the filed upstream issue URL and date, so both files
+   become the durable record of "what we filed and why" for that item.
 
 ---
 
@@ -249,6 +309,17 @@ _(none currently)_
   research plan at `docs/research/upstream-issues/plan-NN-<slug>.md`.
   The plan identifies sources only; drafting is a separate step.
   Recorded in Phase 4 (Step 4.1).
+- **2026-05-05** — Each filing produces a per-issue **report** at
+  `docs/research/upstream-issue-reports/report-NN-<slug>.md` before any
+  upstream issue body is drafted. The upstream issue is a mechanical
+  copy of the report's "Public-facing extract" section. The report is
+  the durable internal record (alternatives weighed, fork-side context,
+  re-verification log). Recorded in Phase 4 (Step 4.2).
+- **2026-05-05** — Both research plans and reports must begin work
+  sessions by re-reading the authoritative-references list at
+  `OS4CSAPI/ogc-client-CSAPI_2:phase-8/docs/research/references.md`.
+  Self-sourcing references is forbidden; gaps must be surfaced to the
+  user before drafting.
 
 ---
 
