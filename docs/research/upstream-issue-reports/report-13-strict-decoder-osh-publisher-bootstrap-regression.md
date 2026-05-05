@@ -79,8 +79,8 @@ content-length: 51
 {"error":"unknown field 'keywords' in properties"}
 ```
 
-Same payload against fork-build cs-go (`c9747af`, the parent of the
-strict-decoder series — i.e. last commit shared by fork and upstream):
+Same payload against a deployment of upstream at `c9747af` (the parent
+of the strict-decoder series — last upstream commit before `a467aba`):
 
 ```text
 $ curl -s -i -X POST -u os4csapi:*** \
@@ -93,10 +93,11 @@ HTTP/2 201
 location: https://.../csapi-go/procedures/353f50aa-9a4e-4e6a-8dc6-...
 ```
 
-Same body. Same server path. **Pinned upstream rejects with 400; the
-parent commit accepts with 201.** The bisect window is the five
-commits listed above; the inducing change is `a467aba` ("Adding Strict
-Parsing").
+Same body. Same server path. **Upstream at `df6da0d` rejects with 400;
+upstream at the parent of the strict-decoder series (`c9747af`) accepts
+with 201.** The bisect window is the five commits listed above; the
+inducing change is `a467aba` ("Adding Strict Parsing"). This is a
+regression intra-upstream, not a fork-vs-upstream divergence.
 
 **Conclusion:** As of `df6da0d`, the GeoJSON-Feature wrapper deserializer
 for Procedure now uses `DecodeWithFieldErrors`, which rejects fields not
@@ -105,14 +106,18 @@ nest spec-legitimate fields (`keywords`, plus the others enumerated in §2)
 under `properties` — the shape OSHConnect-Python and any pre-`a467aba`
 client emits — get HTTP 400 deterministically.
 
-> **Live-evidence caveat.** This live capture pairs `cs-go-upstream`
-> (pure-upstream `df6da0d`) against `cs-go` (fork build at `c9747af`,
-> identical to upstream at the parent of the strict-decoder series).
-> The fork's code is byte-identical to upstream `c9747af`; the fork has
-> *not* been modified. The behavioural delta between the two endpoints
-> is therefore attributable solely to the 98 commits upstream has made
-> since `c9747af`, of which `a467aba` is the inducing one for this
-> report.
+> **Live-evidence caveat — both compared deployments are upstream
+> builds.** `cs-go-upstream` is a fresh build of `upstream/main` at
+> `df6da0d`. The second deployment (`cs-go`) is incidentally a build
+> of the OS4CSAPI fork at fork commit `c9747af`, but the fork has not
+> been modified — `c9747af` is byte-identical to a public upstream
+> commit of the same SHA, reachable from `upstream/main` and serving
+> here as a convenient "upstream at parent of `a467aba`" reproducer.
+> The behavioural delta between the two endpoints is therefore
+> attributable solely to the 98 upstream commits between `c9747af`
+> and `df6da0d`, of which `a467aba` is the inducing one for this
+> report. Reframed: the regression is **upstream vs prior upstream**,
+> not fork vs upstream.
 
 ## 2. Static evidence
 
@@ -240,7 +245,10 @@ POST /procedures with {"properties":{"keywords":[…]}}    -> HTTP 400
                        body: {"error":"unknown field 'keywords' in properties"}
 ```
 
-Cross-deployment confirmation (same body, fork-build at `c9747af`):
+Cross-deployment confirmation (same body, deployment of upstream at
+`c9747af` — the parent of the strict-decoder series; in this lab the
+build happens to be the OS4CSAPI fork at fork commit `c9747af`, which
+is byte-identical to the like-named upstream commit):
 
 ```text
 POST /procedures with {"properties":{"keywords":[…]}}    -> HTTP 201
@@ -396,15 +404,23 @@ What NOT to touch as part of this filing:
   `cs-go` (`c9747af`) and `cs-go-head` (`4b994212`), then attempting
   to fan the OSHConnect-Python publisher fleet at the new endpoint.
 - The user's standing constraint that the fork has not been modified
-  was verified during this finding — `c9747af` is also reachable from
-  `upstream/main` (i.e. fork is a clean snapshot, no fork-side patches),
-  see §1 for the bisect listing. The behavioural delta is solely the
-  98 commits upstream has accumulated since.
-- The publisher fleet currently runs against the fork (`cs-go`) and
-  the fork-built `cs-go-head` deployments without issue. They cannot
-  bootstrap against pinned upstream, hence this report. We will not
-  patch the publishers around the upstream regression — they are
-  documented OSHConnect tooling and should remain spec-aligned.
+  was verified during this finding — `c9747af` is reachable from
+  `upstream/main` (the fork at that SHA is a clean snapshot, no
+  fork-side patches), see §1 for the bisect listing. The fork's source
+  tree on `origin/main` *does* contain `a467aba` (via merge commit
+  `22e8bcd` "Merge upstream SomethingCreativeStudios/main into
+  OS4CSAPI fork"); the in-the-loop `cs-go` deployment is simply a
+  stale binary built before that merge, which is why it serves as a
+  pre-`a467aba` reproducer.
+- The behavioural delta documented in §1 is therefore
+  upstream-vs-prior-upstream (pre- and post-`a467aba`), not
+  fork-vs-upstream.
+- The publisher fleet currently runs against the stale `cs-go` and
+  `cs-go-head` deployments (both at pre-`a467aba` SHAs) without
+  issue. They cannot bootstrap against the upstream-pinned
+  `cs-go-upstream` deployment at `df6da0d`, hence this report. We
+  will not patch the publishers around the upstream regression — they
+  are documented OSHConnect tooling and should remain spec-aligned.
 - The placeholder seed (3 systems / 3 datastreams / 3 observations /
   1 controlstream / 1 command / 1 deployment) created via direct
   field-stripped POST in `seed-upstream.sh` is a workaround for our
@@ -564,7 +580,7 @@ sole inducing change.
 
 ### Live evidence
 
-Two endpoints, identical request body:
+Two upstream-build endpoints, identical request body:
 
 ```text
 $ curl -s -i -X POST -u user:*** \
@@ -572,6 +588,7 @@ $ curl -s -i -X POST -u user:*** \
     --data '{"type":"Feature","properties":{"uid":"urn:test:proc:1",
             "name":"Test","keywords":["a","b"]}}' \
     https://.../csapi-go-upstream/procedures      # upstream df6da0d
+                                                  # (post-a467aba)
 
 HTTP/2 400
 {"error":"unknown field 'keywords' in properties"}
@@ -580,12 +597,15 @@ $ curl -s -i -X POST -u user:*** \
     -H 'Content-Type: application/json' \
     --data '{"type":"Feature","properties":{"uid":"urn:test:proc:1",
             "name":"Test","keywords":["a","b"]}}' \
-    https://.../csapi-go/procedures               # parent of a467aba
-                                                  # (= c9747af)
+    https://.../csapi-go/procedures               # upstream at c9747af
+                                                  # (parent of a467aba)
 
 HTTP/2 201
 location: /procedures/353f50aa-9a4e-4e6a-8dc6-…
 ```
+
+Both endpoints serve upstream code; the second is at the immediate
+parent of `a467aba`. The regression is intra-upstream.
 
 OSHConnect-Python NWS publisher bootstrap, against upstream `df6da0d`:
 
