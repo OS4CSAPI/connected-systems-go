@@ -466,3 +466,11 @@ Client-visible but server-unflagged.
 - Evidence (spec): [`docs/research/evidence/issue-019/spec-authority-2026-04-30.md`](../evidence/issue-019/spec-authority-2026-04-30.md)
 - Plan: [`docs/research/upstream-issues/plan-07-samplingfeature-id-silent-drop.md`](../upstream-issues/plan-07-samplingfeature-id-silent-drop.md)
 - Backlog: [`docs/research/upstream-followup-backlog.md`](../upstream-followup-backlog.md) #10
+
+## 11. Filing record
+
+- **Upstream issue:** <https://github.com/SomethingCreativeStudios/connected-systems-go/issues/6>
+- **Filed:** 2026-05-05
+- **Filed by:** orchestrator (via mcp_io_github_git_issue_write)
+- **Audit verdict:** `pass` — see [report-audit-log.md#report-07-samplingfeature-id-silent-drop](../report-audit-log.md#report-07-samplingfeature-id-silent-drop)
+

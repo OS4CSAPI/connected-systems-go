@@ -268,3 +268,55 @@ SUMMARY (post-fix):
 - **Filed:** 2026-05-05
 
 ---
+
+---
+
+## report-07-samplingfeature-id-silent-drop
+
+**Audit date:** 2026-05-05
+**Verdict:** `pass`
+**Filing-ready:** yes
+
+### §2.1 Mechanical findings (subagent, verbatim)
+
+Pre-flight: `git log -1 upstream/main --format='%H'` → `df6da0dff8e2d3e76b64b00f856c0d43ed644f6d` — matches stated audit reference HEAD. ✓
+
+- **CHECK-1 (Header table)** — backlog #10 / plan paths OK (heading `### 10. samplingFeature@id retains silent-drop type assertion` confirmed); fork-issue/repo handle `N/A`.
+- **CHECK-2 (Source fork issue numbers)** — `OS4CSAPI/connected-systems-go#19` referenced 4× (header, §8, §10 multiple); all `N/A: gh unavailable`.
+- **CHECK-3 (Commit SHAs)** — `df6da0d`, `1b2b614` both **OK** (reachable + ancestors of `upstream/main`).
+- **CHECK-4 (Commit messages)** — `code sight updates`, `Adding support for "latest" for TimeRange` — both match verbatim **OK**.
+- **CHECK-5 (File paths)** — `internal/api/observation_handler.go`, `internal/api/command_handler.go` both **OK**.
+- **CHECK-6 (Line numbers)** — point citations `command_handler.go:217/221/225/229`, `observation_handler.go:225/238/252` all **OK** at exact lines; range `observation_handler.go:238-263` within fuzz **OK**.
+- **CHECK-7 (Code snippets)** — bundle-grep output, `decodeObservationPayload` Select-String block (samplingFeature@id legacy + resultTime/phenomenonTime strict-typed with verbatim error messages), `decodeCommandPayload` snippet, post-1b2b614 RFC3339 parse block, §10 legacy + post-fix snippets — all match upstream verbatim **OK**; recommended-fix diffs (minus-side matches upstream, plus-side proposal).
+- **CHECK-8 (Cross-references)** — plan-07, backlog-#10, evidence/issue-019/{static,live,spec}-2026-04-30, issue-evaluations/issue-019.md §"Adjacent finding" (heading verified) all **OK**; external pre-work URL `N/A`.
+- **CHECK-9 (Spec citations enumerated, not validated)** — OGC 23-001 (CSAPI Part 1 §5.1 / Observation schema); OGC 23-002 (CSAPI Part 2 Observation/Command schemas); RFC 7493 §3.4 (I-JSON wrong-type rejection); RFC 9110 §15.5.1 (400 Bad Request); OAS 3.0.3 / JSON Schema 2020-12 / SWE Common cited as **out-of-scope**.
+- **CHECK-10 (Internal consistency §1 vs §10)** — HEAD SHA, parent fix `1b2b614`, file paths, line numbers (`observation_handler.go:225/238/252`, `command_handler.go:217`), field names (`samplingFeature@id`, `SamplingFeatureID`, `phenomenonTime`, `resultTime`), P3 severity — all **OK** (consistent).
+
+```
+SUMMARY:
+- Checks attempted: 49
+- OK: 43
+- FAIL: 0
+- N/A: 6 (gh unavailable for #19, external pre-work URL, repo handle)
+- Critical concerns: none
+```
+
+### §2.2 Subjective findings (orchestrator)
+
+| Axis | Finding |
+|---|---|
+| Severity calibration (P3) | **Sound.** §9 Q3 explicitly considered P2 vs P3: chose P3 because no repository default-fill exists for `samplingFeature@id`, so silent-drop surfaces as client-visible null in GET response (vs. parent #19 where default-fill could produce a plausibly-correct substitution). Narrower blast radius than parent. |
+| Framing accuracy | **Sound.** "Residual of 1b2b614" framing is precedent-bound — same decoder, same function, same package. Fix is byte-for-byte mirror of parent's pattern. Asymmetry-within-same-function presentation is unusually tight. |
+| Scope guard (§7) | **Sound.** Bundles `command_handler.go:217` sibling (same field, same shape, same package) per plan §8 Q2; explicitly does NOT bundle other `command_handler.go` legacy patterns (`sender`, `currentStatus`, `issueTime`, `executionTime` — different fields). Rationale documented. |
+| Recommended fix realism | **Sound.** Two block edits, byte-for-byte mirror of merged precedent. No new types, no API change. Diff shown for one site; "and analogous in `command_handler.go`" for the second. |
+| Public extract self-containment | **Sound.** §10 stands alone — `1b2b614` precedent, side-by-side asymmetry within `decodeObservationPayload`, sibling site in `command_handler.go`, two-file fix diff, OGC 23-001 + 23-002 + RFC 7493 + RFC 9110 spec authority, P3 rationale. |
+| Companion-report cross-references | Parent #19 cited; backlog #10 cross-linked. No companions. |
+
+### Action items
+None.
+
+### Filed
+- **Upstream issue:** <https://github.com/SomethingCreativeStudios/connected-systems-go/issues/6>
+- **Filed:** 2026-05-05
+
+---
