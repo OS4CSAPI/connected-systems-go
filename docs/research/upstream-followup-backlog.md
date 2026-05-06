@@ -223,12 +223,15 @@ anchors → one-line summary → status.
   audit) since both touch the same formatter sites.
 - **Status:** Ready to file after closure pass.
 
-### 17. Strict JSON decoder rejects nested SensorML fields previously accepted; breaks OSHConnect-Python publishers
+### 17. ~~Strict JSON decoder rejects nested SensorML fields previously accepted; breaks OSHConnect-Python publishers~~ — **SUPERSEDED 2026-05-05**
 - **Source:** Discovery finding 2026-05-05, surfaced during deployment-pinning of `cs-go-upstream` at upstream `df6da0d` and pilot of OSHConnect-Python publisher fleet against the new endpoint. No fork-side issue, no plan-NN.
-- **Category:** Defect (P2 — breaking wire-protocol regression).
-- **Summary:** `a467aba` ("Adding Strict Parsing") switched the GeoJSON-wrapper deserializers (Procedure / Deployment / System) to `common_shared.DecodeWithFieldErrors`, which rejects unknown fields. Each `{Resource}GeoJSONProperties` wrapper struct in `internal/model/domains/{procedure,deployment,system}.go` is a strict subset of its corresponding domain struct, so spec-legitimate SensorML metadata fields (`keywords`, `identifiers`, `classifiers`, `characteristics`, `capabilities`, `contacts`, `documentation`, `history`, `securityConstraints`, `legalConstraints`, …) — historically accepted at the parent commit `c9747af` — now produce HTTP 400 `{"error":"unknown field 'X' in properties"}` deterministically. Documented OSHConnect-Python publishers (Botts-Innovative-Research/OSHConnect-Python and the OS4CSAPI fork; 10-publisher real-time fleet) cannot bootstrap procedures/deployments/systems against fresh-built `upstream/main`. Recommended fix: synchronise the three `*GeoJSONProperties` wrapper structs with their corresponding domain structs (declarative additions; no logic changes; preserves `a467aba`'s strict-mode guard).
-- **Reported in:** [`upstream-issue-reports/report-13-strict-decoder-osh-publisher-bootstrap-regression.md`](upstream-issue-reports/report-13-strict-decoder-osh-publisher-bootstrap-regression.md).
-- **Status:** Ready to file after closure pass.
+- **Category:** ~~Defect (P2 — breaking wire-protocol regression).~~ **Re-categorized:** client-side bug in OSHConnect-Python publishers (latent silent SensorML field loss exposed by upstream `a467aba`'s strict decode). **Upstream `connected-systems-go` is correct; no upstream filing.**
+- **Authoritative finding:** [`issue-evaluations/silent-sensorml-field-loss-pre-strict-decoder.md`](issue-evaluations/silent-sensorml-field-loss-pre-strict-decoder.md)
+- **Disposition plan:** [`plan-report-13-disposition.md`](plan-report-13-disposition.md)
+- **Original (parked) report:** [`upstream-issue-reports/_PARKED_report-13-strict-decoder-osh-publisher-bootstrap-regression.md`](upstream-issue-reports/_PARKED_report-13-strict-decoder-osh-publisher-bootstrap-regression.md) — framing inverted; preserved for forensic value only.
+- **Original recommended fix (rejected):** sync `*GeoJSONProperties` wrapper structs with domain structs. Rejected because the GeoJSON-encoding path is spec-correctly stripped; widening it would conflate `application/geo+json` and `application/sml+json` against CSAPI Part 1.
+- **Roundtrip evidence (2026-05-05):** POST with `Content-Type: application/json` carrying SensorML fields under `properties` → 201 on pre-strict server but `keywords` absent on GET (silent loss); same payload on `application/sml+json` with SensorML shape → 201 + GET preserves `keywords`. Strict server returns 400 on the broken shape (correctly).
+- **Status:** **Superseded.** Action shifted to fork-side OSHConnect-Python repair per `plan-report-13-disposition.md`. Optional P4 upstream filing on content-type enforcement deferred.
 
 ---
 

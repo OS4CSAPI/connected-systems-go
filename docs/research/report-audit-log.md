@@ -555,3 +555,42 @@ None remaining (broken-link fixes applied pre-filing; same pattern as report-09)
 - *Cross-references:* Parent fork-side issue #25 + closing commits (`3fa1b0c`, `704a9e3`, `d2d1347`) cited; companion filing #10 cited; report-11 inline-link inventory carried forward.
 
 **Filed:** [`SomethingCreativeStudios/connected-systems-go#11`](https://github.com/SomethingCreativeStudios/connected-systems-go/issues/11)
+
+
+---
+
+## report-13 — Strict-decoder finding — 2026-05-05
+
+**Verdict:** `parked` (framing inverted; not a `connected-systems-go` filing)
+
+**Trigger:** roundtrip testing on 2026-05-05 (POST `keywords` to pre-strict
+`cs-go` server at `c9747af` with `Content-Type: application/json` GeoJSON-Feature
+shape → 201 + GET response omits `keywords`). Pre-strict server was silently
+dropping SensorML metadata; upstream `a467aba` ("Adding Strict Parsing") is
+correct behavior surfacing a pre-existing **client-side** bug in
+OSHConnect-Python publisher bootstraps.
+
+**Roundtrip evidence:**
+
+| # | Server | `Content-Type` | Payload shape | POST | `keywords` round-trip? |
+|---|---|---|---|---|---|
+| 1 | pre-strict (`c9747af`) | `application/json` | GeoJSON Feature, `keywords` under `properties` | 201 | **NO — silent drop** |
+| 2 | pre-strict (`c9747af`) | `application/sml+json` | SensorML top-level | 201 | **YES** |
+| 3 | strict (`df6da0d`) | `application/json` | GeoJSON Feature, `keywords` under `properties` | 400 | n/a (correctly rejected) |
+
+**Disposition (per [`plan-report-13-disposition.md`](plan-report-13-disposition.md)):**
+
+- Report renamed → `_PARKED_report-13-...md`; banner prepended.
+- Backlog item #17 retagged **superseded** with cross-link to authoritative finding.
+- Authoritative finding to be captured in `issue-evaluations/silent-sensorml-field-loss-pre-strict-decoder.md` (next step).
+- No filing on `SomethingCreativeStudios/connected-systems-go`.
+- Fix-of-record on `OS4CSAPI/OSHConnect-Python` (per directive: no work on `Botts-Innovative-Research/OSHConnect-Python` upstream).
+- Optional P4 upstream filing on content-type enforcement deferred.
+
+**Original (rejected) recommendation:** sync `{Procedure,Deployment,System}GeoJSONProperties`
+wrapper structs with their domain structs. Rejected because the GeoJSON encoding
+is spec-correctly stripped (CSAPI Part 1 separates `application/geo+json`
+spatial-discovery view from `application/sml+json` full-metadata view); widening
+the GeoJSON-properties struct would conflate the two encodings against the spec.
+
+**Filed:** none (parked).

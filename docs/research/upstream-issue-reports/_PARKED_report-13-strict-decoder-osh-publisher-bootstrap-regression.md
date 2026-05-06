@@ -1,6 +1,34 @@
-# Report 13 — Strict JSON decoder rejects nested SensorML fields previously accepted; breaks OSHConnect-Python publisher bootstraps
+# [PARKED] Report 13 — Strict JSON decoder rejects nested SensorML fields previously accepted; breaks OSHConnect-Python publisher bootstraps
+
+> **⛔ PARKED 2026-05-05 — DO NOT FILE.**
+>
+> The framing of this report is **inverted**. Roundtrip testing on
+> 2026-05-05 (POST `keywords` to pre-strict server, GET back) showed
+> the pre-strict server returned 201 but **silently dropped** the
+> field. Upstream `a467aba` ("Adding Strict Parsing") is therefore
+> correct behavior surfacing pre-existing **silent SensorML field
+> loss** in OSHConnect-Python publisher bootstraps — not an upstream
+> regression.
+>
+> **Authoritative finding:** [`../issue-evaluations/silent-sensorml-field-loss-pre-strict-decoder.md`](../issue-evaluations/silent-sensorml-field-loss-pre-strict-decoder.md)
+>
+> **Disposition plan:** [`../plan-report-13-disposition.md`](../plan-report-13-disposition.md)
+>
+> **Bug location:** `OS4CSAPI/OSHConnect-Python` (publisher bootstraps
+> emit `application/json` with GeoJSON-Feature shape carrying SensorML
+> fields under `properties`). Fix shape: switch to
+> `application/sml+json` with SensorML payload shape.
+>
+> The original report-13 body below is preserved for forensic value
+> only. Do not act on its recommendations.
+
+---
+
+# Original report (parked — do not file)
 
 > **🛑 Mandatory pre-work — read every session before working from this report:**
+>
+> 1. Re-open the curated authoritative-references list at
 >
 > 1. Re-open the curated authoritative-references list at
 >    <https://github.com/OS4CSAPI/ogc-client-CSAPI_2/blob/phase-8/docs/research/references.md>
