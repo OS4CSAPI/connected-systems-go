@@ -320,3 +320,55 @@ None.
 - **Filed:** 2026-05-05
 
 ---
+
+---
+
+## report-08-empty-string-resulttime-phenomenontime
+
+**Audit date:** 2026-05-05
+**Verdict:** `pass`
+**Filing-ready:** yes
+
+### §2.1 Mechanical findings (subagent, verbatim)
+
+Pre-flight: `git log -1 upstream/main --format='%H'` → `df6da0dff8e2d3e76b64b00f856c0d43ed644f6d` — matches stated audit reference HEAD. ✓
+
+- **CHECK-1 (Header table)** — backlog #11 (heading `### 11. resultTime / phenomenonTime empty-string conflates with missing` confirmed at L148), plan-08 path **OK**; external pre-work URL and upstream repo identifier `N/A`.
+- **CHECK-2 (Source fork issue numbers)** — `OS4CSAPI/connected-systems-go#20` referenced in header, §2, §8, §10; all `N/A: gh unavailable` (logged for manual spot-check).
+- **CHECK-3 (Commit SHAs)** — HEAD `df6da0d…`, parent `1b2b614`, plus `fe9fbd0`, `635547f`, `f2cf1c3` (in §1 log preview) — all **OK** (reachable + ancestors).
+- **CHECK-4 (Commit messages)** — `code sight updates`, `Adding support for "latest" for TimeRange`, `Adding cascade delete and fixing existing cascade delete to full delete`, `making the default limit for pagination configurable`, `Adding the other resources along with e2e tests` — all match verbatim **OK**.
+- **CHECK-5 (File paths)** — `internal/api/observation_handler.go` cited in §1, §2, §6, §10 — **OK**.
+- **CHECK-6 (Line numbers)** — report does not cite `<file>:<line>` numbers (block-level citations only) — `N/A`.
+- **CHECK-7 (Code snippets)** — `resultTime` decoder block (rtRaw/ok/`if rtStr != ""`/parse/assign with verbatim error message), `phenomenonTime` analogous block with `obs.PhenomenonTime = &t` pointer assignment, late `obs.ResultTime.IsZero()` guard with `"resultTime is required"` message, behavior matrix observable from code shape, claimed-zero-match grep for `rtStr == ""|ptStr == ""|must be a non-empty` — all **OK** (re-verified; zero matches confirmed).
+- **CHECK-8 (Cross-references)** — evidence/issue-020/{static,live,spec}-2026-04-30, issue-evaluations/issue-020.md, plan-08, backlog #11 — all **OK**; external pre-work URL `N/A`.
+- **CHECK-9 (Spec citations enumerated, not validated)** — RFC 7807 §3 (primary, problem-detail accuracy); OGC 23-001 §Error responses; OGC 19-072 §error responses (OGC API – Common Part 1); RFC 9110 §15.5.1 (400 Bad Request); OAS 3.0.3 / JSON Schema 2020-12 / RFC 7493 cited as **out-of-scope**.
+- **CHECK-10 (Internal consistency §1 vs §10)** — HEAD SHA, parent fix `1b2b614`, file path, function name `decodeObservationPayload`, identifiers (`rtRaw/rtStr/ptRaw/ptStr`), pointer assignment (`obs.PhenomenonTime = &t`), late guard (`obs.ResultTime.IsZero()`), behavior matrix rows, severity P3 — all **OK** (consistent).
+
+```
+SUMMARY:
+- Checks attempted: 38
+- OK: 30
+- FAIL: 0
+- N/A: 8 (gh unavailable for #20 across multiple references; external pre-work URL; external upstream repo identifier; CHECK-6 not applicable)
+- Critical concerns: none
+```
+
+### §2.2 Subjective findings (orchestrator)
+
+| Axis | Finding |
+|---|---|
+| Severity calibration (P3) | **Sound.** §9 Q4 explicitly weighed P2: phenomenonTime silent-accept-empty is "data-integrity-adjacent" but PhenomenonTime is optional in CSAPI Part 1, so empty-string→nil is semantically equivalent to field omission. Pure problem-detail accuracy + asymmetric-message UX. P3 holds. |
+| Framing accuracy | **Sound.** "Last gap of 1b2b614 matrix" framing is precedent-bound — body of #20 explicitly proposed the empty-string branch the shipped commit omitted. Asymmetric-symptoms framing (one decoder shape, two surfaces) is unusually crisp and surfaces a genuine sibling defect not in the original matrix. |
+| Scope guard (§7) | **Sound.** Excludes wrong-type/missing/null branches (covered by `1b2b614`), late `IsZero()` guard (retained as defense-in-depth), null↔missing collapse (out of scope per maintainer's accepted framing in #20), `samplingFeature@id`/`command_handler.go`/`ToTimeRange` (separate filings — report-07, report-06). Tight. |
+| Recommended fix realism | **Sound.** Two block edits, one function. Mirrors maintainer's own #20-body proposal byte-for-byte. Diff shown for one site; "analogous edit" for the second. No new types, no API change. |
+| Public extract self-containment | **Sound.** §10 stands alone — `1b2b614` precedent, asymmetric-symptoms behavior matrix, full code-shape excerpt (resultTime + phenomenonTime + late guard), zero-match grep, fix diff, RFC 7807 + OGC 23-001 + OGC 19-072 + RFC 9110 spec authority, P3 rationale with phenomenonTime optional-field reasoning. |
+| Companion-report cross-references | Parent #20 cited in §8 + §10. Report-06 (`ToTimeRange` family) and report-07 (`samplingFeature@id`) cross-referenced in §7 scope guard. No fork-side companions. |
+
+### Action items
+None.
+
+### Filed
+- **Upstream issue:** <https://github.com/SomethingCreativeStudios/connected-systems-go/issues/7>
+- **Filed:** 2026-05-05
+
+---
