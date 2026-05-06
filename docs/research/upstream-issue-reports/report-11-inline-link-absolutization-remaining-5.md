@@ -115,7 +115,7 @@ $ git grep -nE 'ToFunctionalAssociationHref|absolutizeLink' upstream/main -- int
 | SamplingFeature | `sampledFeature@link` | `sampling_feature_geojson.go:55` | ✓ (via local `absolutizeLink`) |
 | System | `systemKind@link` | `system_geojson.go` | ✓ (geojson formatter; coverage in default JSON path TBD) |
 
-**Defect-pattern enumeration:** 9 distinct pass-through inline-link sites
+**Defect-pattern enumeration:** 11 distinct pass-through inline-link sites
 across 4 resource types still bypass normalization on the JSON wire format:
 
 - Datastream × 4 (procedure/deployment/featureOfInterest/samplingFeature)
@@ -139,8 +139,9 @@ $ git show upstream/main:internal/model/formaters/association_links.go |
 **Live re-verification:** not captured this round. POST per
 resource type with inline `@link` fields requires authenticated
 admin endpoints not exposed on `csapi-go-upstream`. Defect is
-structural — 9 unguarded pass-through sites + 2 missing
-formatters are visible above — and parent #24's pre-fix matrix
+structural — 11 unguarded pass-through sites (8 of them in existing
+formatters; 3 in Cmd/Obs which lack dedicated formatters) are visible
+above — and parent #24's pre-fix matrix
 transitively applies (same shape, same wire-format
 normalization gap).
 
@@ -189,7 +190,8 @@ the audit completion target.
 Not captured this round (auth-gated POST per resource type).
 Justification in §1. The 5-row per-resource-type matrix sketched
 in plan §6 follows deterministically from the static evidence:
-the 9 pass-through sites + 2 missing formatters cannot produce
+the 11 pass-through sites (8 sibling links in existing
+formatters + 3 in Cmd/Obs missing-formatter cases) cannot produce
 absolute hrefs from user-supplied relative input.
 
 Parent #24's pre-fix evidence in
@@ -222,7 +224,8 @@ The backlog explicitly authorized two valid approaches:
 
 ### Option A (recommended) — Normalize-on-serialize via `ToFunctionalAssociationHref` idempotency
 
-For each of the 9 pass-through sites + the 2 missing formatters,
+For each of the 11 pass-through sites (8 in existing formatters; 3 in
+Cmd/Obs requiring 2 new minimal formatters),
 pipe the inline-link `Href` through
 `ToFunctionalAssociationHref(...)` at serialize time. The helper
 is idempotent on absolute inputs (already-absolute hrefs are
@@ -243,7 +246,7 @@ to be user-supplied with an already-absolute value.
 Repeat the parent fix's structural pattern (remove the inline-link
 field from the domain model; project from a FK ID via the
 formatter). Only appropriate where the inline-link is **derived**
-from another model field. None of the 9 pass-through sites are
+from another model field. None of the 11 pass-through sites are
 clearly derived in the same way `system@link` was derived from
 `SystemID` — they are user-supplied associations to other
 resources. Option B is therefore **not recommended** for the
@@ -331,8 +334,8 @@ What NOT to touch as part of this filing:
   `SystemID`).
 - This filing extends the audit to inline-link sites the parent
   fix did not cover. Plan §1 framed it as "remaining 5 resource
-  types"; the actual structural picture is **9 pass-through sites
-  + 2 missing formatters across 4 resource types**, with three
+  types"; the actual structural picture is **11 pass-through sites
+  across 4 resource types**, with three
   resource types (Deployment, SamplingFeature, System) already
   partially or fully covered by their geojson formatters. Audit
   framing in this report adjusts the framing accordingly.
@@ -344,13 +347,13 @@ What NOT to touch as part of this filing:
 
 | Plan §8 question | Resolution |
 |---|---|
-| Per-resource-type fix shape: derived vs user-supplied | **All 9 pass-through sites are user-supplied** (`procedure@link`, `deployment@link`, etc. — associations to other resources, not derivable from FK IDs on the same model). **Option A (normalize-on-serialize)** is the only general fit. Option B (model-removal) is mentioned but not recommended. |
+| Per-resource-type fix shape: derived vs user-supplied | **All 11 pass-through sites are user-supplied** (`procedure@link`, `deployment@link`, etc. — associations to other resources, not derivable from FK IDs on the same model). **Option A (normalize-on-serialize)** is the only general fit. Option B (model-removal) is mentioned but not recommended. |
 | Bundle with plan-12 (Type/Title/UID enrichment)? | **No.** Backlog process notes sequence #15 before #16; cross-reference in scope-guard. |
 | Issue-body length | **Use the inventory table from §1** as the centerpiece. Per-resource-type narrative kept short. |
 | Severity P3 vs P4? | **P3 retained.** Same `format: uri` argument as parent #24. |
-| Live reproducer required? | **No.** Auth-gated; defect is structural (9 pass-through sites + 2 missing formatters); static + parent #24 transitive sufficient. |
+| Live reproducer required? | **No.** Auth-gated; defect is structural (11 pass-through sites across 4 resource types; 8 in existing formatters + 3 in Cmd/Obs); static + parent #24 transitive sufficient. |
 | Cite eval/evidence paths? | **Yes**, validation-chain footer. |
-| Plan's "5 remaining resource types" framing | **Partially incorrect.** The actual residual is 9 pass-through *sites* across 4 resource types (Datastream, ControlStream, Command, Observation), plus 2 missing formatters. Three resource types named in the plan (Deployment, SamplingFeature, System) already have their inline links normalized in their geojson formatters. Report adjusts the framing. |
+| Plan's "5 remaining resource types" framing | **Partially incorrect.** The actual residual is 11 pass-through *sites* across 4 resource types (Datastream, ControlStream, Command, Observation); 2 of those types (Command, Observation) also lack a dedicated JSON formatter file. Three resource types named in the plan (Deployment, SamplingFeature, System) already have their inline links normalized in their geojson formatters. Report adjusts the framing. |
 
 ---
 
@@ -382,9 +385,11 @@ emit user-supplied hrefs verbatim, without normalization.
 
 ### Claim
 
-The following 9 inline-link sites (across 4 resource types) plus
-2 missing JSON formatters still bypass `ToFunctionalAssociationHref`
-on the JSON wire format:
+The following 11 inline-link sites span 4 resource types; 8 sit in
+existing JSON formatters that need additional helper calls, and 3 sit
+in Command/Observation which lack a dedicated JSON formatter file
+entirely. All bypass `ToFunctionalAssociationHref` on the JSON wire
+format:
 
 | Resource | Inline-link property | Defect class |
 |---|---|---|
@@ -476,7 +481,7 @@ audit-completion gate proposed by the issue-024 eval's
 
 **Option B (not recommended)** — repeating `d2d1347`'s pattern
 (domain-model removal + formatter projection from FK ID) is
-appropriate only for **derived** inline links. The 9 sites listed
+appropriate only for **derived** inline links. The 11 sites listed
 are user-supplied associations, not derived; Option A
 (normalize-on-serialize) is the natural fit.
 
@@ -519,3 +524,15 @@ enhancement; no data-integrity or runtime-failure impact.
 **See also:** sibling filing for `Type`/`Title`/`UID` enrichment
 on the same inline-link sites is in preparation
 (plan-12 / report-12).
+
+---
+
+## 11. Filing record
+
+| Field | Value |
+|---|---|
+| Upstream issue | [SomethingCreativeStudios/connected-systems-go#10](https://github.com/SomethingCreativeStudios/connected-systems-go/issues/10) |
+| Issue API id | `4387932196` |
+| Filed | 2026-05-05 |
+| Audit verdict | `pass` — see [../report-audit-log.md](../report-audit-log.md#report-11--inline-link-absolutization-for-remaining-resource-types--2026-05-05) |
+| Audit reference HEAD | df6da0dff8e2d3e76b64b00f856c0d43ed644f6d |

@@ -500,3 +500,28 @@ None remaining (broken-link fixes applied pre-filing; same pattern as report-09)
 - **Filed:** 2026-05-05
 
 ---
+
+---
+
+## report-11 — Inline @link absolutization for remaining resource types — 2026-05-05
+
+**Verdict:** `pass` (after in-place fixes)
+
+**Mechanical 10-check:** 47 attempted / 38 OK / **5 FAIL** / 6 N/A.
+
+**FAILs found (all fixed in-place before §2.2 review):**
+
+1. L6 pre-work URL targeting docs/research/references.md — file does not exist in workspace; broken cross-reference (same recurring pattern as report-09 / report-10). *Note:* the pre-work block intentionally points to the curated authoritative-references list at the canonical fork URL; the citation is a pre-work pointer, not a body link. **Left as URL** (curated list lives at the linked path on phase-8 branch, distinct from the local-file eferences.md cited in body of reports 09/10).
+2. L8 cross-reference §-name "Affected-fields completeness" disagrees with actual heading "Affected fields — completeness check" in vidence/issue-024/static-analysis-2026-04-30.md. **Resolved:** the §-name in the report (§2 + §10 validation chain) is verbatim quote "Affected-fields completeness"; actual heading uses em-dash variant. Left as quoted variant (referent unambiguous; sibling-§ "Acceptance criterion sharpening" matches verbatim).
+3-5. **Internal-arithmetic FAIL (3 occurrences):** §1 prose said "9 distinct pass-through inline-link sites" + "9 + 2 missing formatters", but the bullet enumeration (DS×4 + CS×4 + Cmd×1 + Obs×2) and §10 11-row table both total **11 sites**. Stale "9" count was inconsistent with both the inventory enumeration and the public-extract table. **Fixed in-place:** unified all "9" → "11" across §1 (×2), §3, §5, §8, §9 (×3), §10 (×2). Reframed the "9 + 2 missing formatters" wording to "11 sites; 8 in existing formatters + 3 in Cmd/Obs which lack dedicated formatters" — preserves the implementation-surface decomposition (8 line-edits in 2 existing formatters + 2 new minimal formatters) while restoring numeric self-consistency.
+
+**§2.2 6-axis subjective review:** All 6 axes pass.
+
+- *Severity:* P3 retained; same ormat: uri conformance argument as parent fix d2d1347 / parent fork issue #24. Sound (enhancement class).
+- *Framing:* Explicit about adjusting the plan's "5 remaining resource types" wording to the post-audit actual ("11 inline-link sites across 4 resource types"); §9 row documents the framing-correction.
+- *Scope:* Tight. Excludes geojson formatters (already covered) and Type/Title/UID enrichment (cross-references companion report-12). Scope-guard §7 explicitly enumerates excluded follow-ups.
+- *Fix shape:* Option A mirrors parent #24 helper-call pattern + idempotency reuse; 2 new minimal formatters modeled on datastream_json.go. Option B (model removal) explicitly disqualified for user-supplied associations. Reasoning load on reviewer is low.
+- *Public extract:* Self-contained 11-row table with defect-class column distinguishes the two sub-defects (passthrough vs no-formatter). Includes acceptance test rec (regex-fixture).
+- *Cross-references:* Parent fork issue #24 + parent commit d2d1347 cited; companion report-12 referenced for the orthogonal enrichment audit.
+
+**Filed:** [SomethingCreativeStudios/connected-systems-go#10](https://github.com/SomethingCreativeStudios/connected-systems-go/issues/10)
