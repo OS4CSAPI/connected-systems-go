@@ -197,24 +197,77 @@ encoding. That conflates `application/geo+json` and
 separation. The 400 from the strict decoder is the correct
 failure-mode for a client that mixes encodings.
 
-## Implication for OS4CSAPI publisher fleet
+## Implication for OS4CSAPI publisher fleet — verified by DB audit 2026-05-05
 
-**Latent silent data loss.** All 10 publishers in the fleet have
-been emitting `application/json` GeoJSON-Feature bodies with
-SensorML metadata under `properties` since fleet inception. The
-pre-strict server accepted them with 201 but persisted only
-`uid` / `name` / `description`. The 9 SensorML metadata fields
-listed above have been NULL/empty in the database for the
-fleet-bootstrapped procedures, deployments, and systems.
+### Database audit results (`connected-systems-go-db-1`, pre-strict `c9747af`, port 8282)
 
-**Data integrity audit needed (plan step C):** spot-check 5
-publisher-bootstrapped rows in Postgres on `cs-go` / `cs-go-head`;
-expect all 9 fields NULL/empty. Document in this eval under a
-follow-up section after the audit runs.
+| Resource    | total | `keywords` | `identifiers` | `classifiers` | `contacts` | `characteristics` | `capabilities` | `documentation` | `history` | `security_*` | `legal_*` |
+|-------------|------:|-----------:|--------------:|--------------:|-----------:|------------------:|---------------:|----------------:|----------:|-------------:|----------:|
+| procedures  |    12 |      **0** |         **0** |         **0** |      **0** |             **0** |          **0** |           **0** |     **0** |        **0** |     **0** |
+| systems     |    38 |     **34** |        **35** |        **35** |     **35** |               n/a |            n/a |           **0** |     **0** |        **0** |     **0** |
+| deployments |    62 |      **0** |         **0** |         **0** |      **0** |             **0** |          **0** |           **0** |     **0** |        **0** |     **0** |
 
-**Re-bootstrap required.** Server-side data is unrecoverable; the
-authoritative source is publisher-side. Wipe-and-re-bootstrap is
-required after the publisher fix lands.
+(`systems` table does not have `characteristics` / `capabilities` columns —
+those are scoped to procedures and deployments per the SensorML schema.)
+
+### Refined finding — loss is per-resource
+
+The silent-loss bug is **not uniform across all three SensorML resources**:
+
+- **Systems (38 rows): metadata MOSTLY PRESERVED.** ~89% have
+  `keywords` / `identifiers` / `classifiers` / `contacts` populated.
+  Implies the publisher fleet's `bootstrap_*_system` paths use a
+  spec-correct content-type/payload-shape pair (likely
+  `application/sml+json` with SensorML-top-level body — same shape
+  as Test 2 above). `documentation` / `history` /
+  `security_constraints` / `legal_constraints` still 0/38, but those
+  may simply not be supplied in the publisher source data.
+- **Procedures (12 rows): TOTAL LOSS.** 0/12 across all 10 SensorML
+  columns. The publisher fleet's `bootstrap_*_procedure` paths use
+  the broken GeoJSON-as-JSON shape (Test 1 above) — server returns
+  201 but persists only `uid` / `name` / `description`.
+- **Deployments (62 rows): TOTAL LOSS.** 0/62 across all 10 columns.
+  Same client shape bug as procedures.
+
+### Database audit results (`csapi-head-db-1`, port 8283)
+
+`cs-go-head` is currently a development DB used for upstream-issue
+test fixtures (rows have `urn:test:issue*` UIDs); no production
+publisher fleet data. 0 procedures, 17 test systems (all empty),
+2 test deployments (all empty). Confirms scope-limit.
+
+### Bug location refinement (informs plan step E)
+
+The `OS4CSAPI/OSHConnect-Python` fix must focus on
+**procedure-bootstrap and deployment-bootstrap code paths**;
+system-bootstrap appears to already use the spec-correct shape and
+may need only minor consistency tweaks. Recommended re-investigation
+in plan step E:
+
+- `publishers/*/bootstrap_*.py` — diff how `ensure_procedure` and
+  `ensure_deployment` POST payloads compare to `ensure_system`.
+  Expectation: system path sends SensorML top-level (correct);
+  procedure + deployment paths send GeoJSON Feature with metadata
+  under `properties` (broken).
+- `publishers/bootstrap_helpers.py:api_post` — content-type and
+  body-shape selection logic.
+
+### Re-bootstrap required
+
+Server-side data for procedures and deployments is unrecoverable;
+the authoritative source is publisher-side. Wipe-and-re-bootstrap
+of the entire fleet is required after the publisher fix lands. The
+existing todo `Wipe upstream DB and recreate` (currently in-progress)
+remains gated on plan step E completion. Systems data may be
+salvageable via export/re-import once publisher emits identical
+shape on the strict server, but cleanest path is full re-bootstrap.
+
+### Audit reproducibility
+
+SQL: see git history of `.tmp-audit-sql.sql` (deleted post-run) or
+re-run with the schema-summary script in plan step C. Run via
+SSH-to-Oracle-VM → `sudo docker exec connected-systems-go-db-1 psql
+-U postgres -d connected_systems -f /tmp/audit.sql`.
 
 ## Action — see [`../plan-report-13-disposition.md`](../plan-report-13-disposition.md)
 
