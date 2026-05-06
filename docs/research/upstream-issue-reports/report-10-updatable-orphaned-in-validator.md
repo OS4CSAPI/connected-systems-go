@@ -189,15 +189,14 @@ Direct binding via OGC 23-002 + OGC 23-011r1 (SWE Common 3.0).
 | Source | List entry it traces to | Used for |
 |---|---|---|
 | **OGC 23-002** — CSAPI Part 2 Datastream / DataComponent schemas | "OGC API - Connected Systems - Part 2: Dynamic Data" / "Part 2: OpenAPI Specification" under *OGC CSAPI Standards* | Confirms `updatable` is a normative property on scalar `DataComponent` subclasses per the bundled schemas. **Primary citation.** |
-| **OGC 23-011r1** — OGC SWE Common 3.0 | "OGC SWE Common 3.0 (OGC 23-011r1)" under *OGC Standards* (verified at [`../references.md`](../references.md) line 152) | Authority for the meaning of the `updatable` flag on a DataComponent (whether the value/definition may be changed after creation). |
+| **OGC 23-011r1** — OGC SWE Common 3.0 | "OGC SWE Common 3.0 (OGC 23-011r1)" under *OGC Standards* | Authority for the meaning of the `updatable` flag on a DataComponent (whether the value/definition may be changed after creation). |
 | **OGC 23-001** — CSAPI Part 1 / update-path conformance | "OGC API - Connected Systems - Part 1: Core" under *OGC CSAPI Standards* | Confirms PUT/PATCH conformance must honor the schema declarations the server itself round-trips on GET. The server is responsible for honoring contracts it advertises. |
 | **RFC 7807** §3 (problem-detail "identify the problem") | "RFC 7807 — Problem Details for HTTP APIs" under *IETF RFCs* | Supporting: when enforcement IS added, the rejection should be specific (`"component <path> is declared updatable=false"`), not a generic 400. |
 
 **Out-of-scope sources (not cited):** OAS 3.0.3, JSON Schema 2020-12, RFC 7493.
 
 > **References-list verification.** Plan §7 speculated SWE Common as
-> "OGC 12-000". Curated entry confirmed as **OGC 23-011r1** at
-> [`../references.md`](../references.md) line 152. No
+> "OGC 12-000". Current canonical entry is **OGC 23-011r1**. No
 > reference-list gap.
 
 ## 5. Alternatives considered (internal-only)
@@ -332,7 +331,7 @@ What NOT to touch as part of this filing:
 | Severity P3 vs P2? | **P3 retained.** Update-only surface; recoverable via subsequent GET; client-visible error behavior. |
 | Live reproducer required? | **No.** Auth-gated multi-step sequence; defect is structural (zero `Updatable` refs in `internal/api/`, plus bare schema-update handler bodies). Static + parent #21 transitive sufficient. |
 | Cite eval/evidence paths? | **Yes**, validation-chain footer. |
-| References-list canonical entry for SWE Common | **OGC 23-011r1** (verified at [`../references.md`](../references.md) line 152). |
+| References-list canonical entry for SWE Common | **OGC 23-011r1**. |
 
 ---
 
@@ -516,3 +515,11 @@ silently sticks." Spec-conformance defect.
 
 **See also:** sibling filing for `Constraint`
 (report-09 / `90f2294`).
+
+## 11. Filing record
+
+- **Upstream issue:** <https://github.com/SomethingCreativeStudios/connected-systems-go/issues/9>
+- **Filed:** 2026-05-05
+- **Filed by:** orchestrator (via mcp_io_github_git_issue_write)
+- **Audit verdict:** `pass` (after 3 in-place broken-link fixes) — see [report-audit-log.md#report-10-updatable-orphaned-in-validator](../report-audit-log.md#report-10-updatable-orphaned-in-validator)
+

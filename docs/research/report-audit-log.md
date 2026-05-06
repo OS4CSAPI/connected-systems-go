@@ -435,3 +435,68 @@ None remaining (broken-link fixes applied pre-filing).
 - **Filed:** 2026-05-05
 
 ---
+
+---
+
+## report-10-updatable-orphaned-in-validator
+
+**Audit date:** 2026-05-05
+**Verdict:** `pass` (after 3 in-place broken-link fixes, same pattern as report-09)
+**Filing-ready:** yes
+
+### §2.1 Mechanical findings (subagent, verbatim)
+
+Pre-flight: `git log -1 upstream/main --format='%H'` → `df6da0dff8e2d3e76b64b00f856c0d43ed644f6d` — matches stated audit reference HEAD. ✓
+
+- **CHECK-1 (Header table)** — backlog #13 (heading `### 13. DatastreamDataComponent.Updatable orphaned in validator` at L172), plan-10 path — **OK**; external pre-work URL and upstream repo identifier `N/A`.
+- **CHECK-2 (Source fork issue numbers)** — `#21` (parent) referenced multiple times — `N/A: gh unavailable`.
+- **CHECK-3 (Commit SHAs)** — HEAD `df6da0d…` **OK**; fork-side `90f2294` (report-09 commit, "see also" footer) reachable on fork but not ancestor of `upstream/main` — acceptable as fork-side reference, flagged.
+- **CHECK-4 (Commit messages)** — `code sight updates` matches verbatim — **OK**.
+- **CHECK-5 (File paths)** — `internal/model/common_shared/characteristics.go`, `internal/model/domains/datastream.go`, `internal/model/generators/generators_common_shared.go`, `internal/api/control_stream_handler.go`, `internal/api/datastream_handler.go`, `internal/api/observation_schema_validation.go` — all **OK**.
+- **CHECK-6 (Line numbers)** — `characteristics.go:96` (`Updatable *bool json:"updateable,omitempty"`), `datastream.go:223` (`Updatable *bool json:"updatable,omitempty"`), `generators_common_shared.go:107` (`Updatable: &up,`), `control_stream_handler.go:246` (`UpdateControlStreamSchema`), `datastream_handler.go:159` (`UpdateDatastream`), `datastream_handler.go:233` (`UpdateDatastreamSchema`) — all **OK** (exact matches).
+- **CHECK-7 (Code snippets)** — `UpdateDatastreamSchema` body, `UpdateControlStreamSchema` body, `NilValues` Select-String snippet, zero-match grep for `Updatable` in `internal/api/`, 2-line grep block in `internal/model/` — all **OK**.
+- **CHECK-8 (Cross-references)** — plan-10, evidence/issue-021/{static,live,spec}-2026-04-30, issue-evaluations/issue-021.md (heading "Adjacent finding (not in original body)" at L46), backlog #13 — all **OK**; `../references.md` (cited L192, L200, L335) — **FAIL** (file does not exist; same as report-09).
+- **CHECK-9 (Spec citations enumerated, not validated)** — OGC 23-002 (primary, CSAPI Part 2 DataComponent schemas); OGC 23-011r1 (SWE Common 3.0 `updatable` semantics); OGC 23-001 (CSAPI Part 1 PUT/PATCH conformance); RFC 7807 §3.
+- **CHECK-10 (Internal consistency §1 vs §10)** — HEAD SHA, handler line numbers (233, 246, 159), JSON-tag spelling typo (`updateable` vs `updatable`), file paths, defect framing (zero `Updatable` refs in `internal/api/`) — all **OK** (consistent).
+
+```
+SUMMARY:
+- Checks attempted: 33
+- OK: 28
+- FAIL: 2 (broken `../references.md` link cited 3× — L192/L200/L335; same pattern as report-09)
+- N/A: 3
+- Critical concerns:
+  - `docs/research/references.md` does not exist (same as report-09)
+  - `#21` issue claims unverified (gh unavailable); helper presence verifiable in upstream
+  - `90f2294` is fork-side (not on upstream/main) — acceptable as "see also" framing
+```
+
+### Pre-filing fixes (orchestrator)
+
+Same broken-link pattern as report-09. Fixed in-place:
+
+- L192 §4 spec table row (OGC 23-011r1): removed `(verified at [../references.md](../references.md) line 152)` parenthetical.
+- L198-201 §4 references-list verification block: removed broken-link clause; kept the `OGC 23-011r1` canonical-entry claim.
+- L335 §9 row "References-list canonical entry for SWE Common": simplified to `**OGC 23-011r1**.`
+
+Post-fix: 30 OK / 0 FAIL / 3 N/A.
+
+### §2.2 Subjective findings (orchestrator)
+
+| Axis | Finding |
+|---|---|
+| Severity calibration (P3) | **Sound.** §9 explicitly contrasted with sibling report-09's P2: this is update-only path, recoverable via subsequent GET, no data-corruption risk for existing observations. Distinct severity from #8 (`Constraint` P2 — silent observation corruption on POST). |
+| Framing accuracy | **Sound.** "Third sibling of #21 audit cycle" framing is precedent-bound and explicit — full asymmetry table extends from `NilValues` (post-#21) → `Constraint` → `Updatable`. Each row distinguishes its handler surface (POST validator vs PUT/PATCH update). Defensive two-reading note on `updatable` semantics (schema-level vs data-level) is good practice. |
+| Scope guard (§7) | **Sound.** Excludes POST-time validator (#21 fix in place), `Constraint` enforcement (separate filing — report-09), model layer (correctly declared, no changes), schema migration. Adjacent JSON-tag-typo finding (`updateable` vs `updatable`) explicitly **not bundled** with rationale (different defect class, separate filing if desired). |
+| Recommended fix realism | **Sound.** One schema-diff helper + one rejection block per handler (2-3 handlers). Fix mirrors helper-style pattern from #21 / report-09 but adapted to PUT/PATCH (pre-update fetch + diff + path-list rejection). No new types, no model changes, no schema migration. Pseudocode shape with explicit `diffNonUpdatable` placeholder, line-level deferred to fix PR. |
+| Public extract self-containment | **Sound.** §10 stands alone — full asymmetry table (3-column extension), zero-match grep, bare-handler-body code, fix pseudocode with violations-list rejection, OGC 23-002 + 23-011r1 + 23-001 + RFC 7807 spec authority, P3 rationale, two-reading semantics note. Adjacent JSON-tag-typo "FYI not bundled" surfaced in §10 (transparent disclosure to maintainer). |
+| Companion-report cross-references | Parent #21 cited; report-09 (`Constraint` sibling) cross-referenced in §10 footer + §7 scope guard + §8 fork-side context (with fork-side `90f2294` SHA). Three-filing cycle articulated transparently. |
+
+### Action items
+None remaining (broken-link fixes applied pre-filing; same pattern as report-09).
+
+### Filed
+- **Upstream issue:** <https://github.com/SomethingCreativeStudios/connected-systems-go/issues/9>
+- **Filed:** 2026-05-05
+
+---
