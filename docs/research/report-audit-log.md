@@ -216,3 +216,55 @@ None.
 - **Filed:** 2026-05-05
 
 ---
+
+---
+
+## report-06-totimerange-year-0001-silent-discard
+
+**Audit date:** 2026-05-05
+**Verdict:** `pass` (after in-place line-range fixes)
+**Filing-ready:** yes
+
+### §2.1 Mechanical findings (subagent, verbatim)
+
+Pre-flight: `git log -1 upstream/main --format='%H'` → `df6da0dff8e2d3e76b64b00f856c0d43ed644f6d` — matches stated audit reference HEAD. ✓
+
+- **CHECK-1 (Header table)** — backlog/plan paths OK; external pre-work URL `N/A`.
+- **CHECK-2 (Source fork issue numbers)** — `OS4CSAPI/connected-systems-go#18` referenced 3× (header, §8, §10); all `N/A: gh unavailable`.
+- **CHECK-3 (Commit SHAs)** — `df6da0d`, `c2ab201`, `1b2b614`, `554ada5`, `6b856bb` all **OK** (reachable + ancestors of `upstream/main`).
+- **CHECK-4 (Commit messages)** — all 5 quoted subjects match `git log -1 <SHA> --format='%s'` verbatim **OK**.
+- **CHECK-5 (File paths)** — `internal/model/common_shared/time_range.go`, `history.go`, `time_range_test.go` all **OK**.
+- **CHECK-6 (Line numbers)** — point-line citations (`time_range.go:54/119/129/147/152/161/298/314`, `history.go:39`, `time_range_test.go:112`) all **OK**; `UnmarshalJSON` array branch "73-89" / object branch "98-115" within fuzz **OK**; `toTimeRangeStrict` line 215 **OK**. Two function-range citations FAILed pre-fix: `ToTimeRange "lines 129-170"` (actual 129-166, +4 drift) and `ToTimeRangeFromSlice "lines 187-201"` (actual 172-194, range starts at second guard and runs into next function). **Both fixed in-place pre-filing** (129-170 → 129-166 ×1; 187-201 → 172-194 ×2).
+- **CHECK-7 (Code snippets)** — `ToTimeRange` body, `UnmarshalJSON` string-form, `history.go:39` excerpt, `ParseTimeRange(string)` adapter, `ParseTimeRange(map)` adapter, §10 `ToTimeRangeFromSlice` correct-guard snippet — all match upstream verbatim **OK**.
+- **CHECK-8 (Cross-references)** — `../upstream-followup-backlog.md` #9 (heading verified at line 122), `../upstream-issues/plan-06-...md`, `../evidence/issue-018/static-analysis-2026-04-30.md`, `live-test-2026-04-30.md`, `spec-authority-2026-04-30.md`, `../issue-evaluations/issue-018.md` §"Adjacent finding" (heading verified at line 42) all **OK**.
+- **CHECK-9 (Spec citations enumerated, not validated)** — RFC 7493 §3.4 (I-JSON); OGC 23-001 (CSAPI Part 1 `phenomenonTime`); OGC 23-002 (CSAPI Part 2 Datastream/Observation schemas); RFC 9110 §15.5.1 (400 Bad Request); OAS 3.0.3 / JSON Schema 2020-12 cited as **out-of-scope**.
+- **CHECK-10 (Internal consistency §1 vs §10)** — HEAD SHA, three legacy-site lines (147/152/161), four-site caller graph, parent fix `c2ab201`, file paths, P3 severity — all **OK** (consistent).
+
+```
+SUMMARY (post-fix):
+- Checks attempted: 49
+- OK: 43
+- FAIL: 0 (2 pre-fix line-range FAILs all resolved in-place)
+- N/A: 6 (3× gh unavailable for #18, external URL, repo handle, subjective deferral)
+- Critical concerns: none
+```
+
+### §2.2 Subjective findings (orchestrator)
+
+| Axis | Finding |
+|---|---|
+| Severity calibration (P3) | **Sound.** Parent `c2ab201` covers high-traffic UnmarshalJSON array/object branches; residual surface is slash-delimited string form (less canonical) + `history.go` HistoricTime fallback. P2 reserved for parent. |
+| Framing accuracy | **Sound.** "Residual of c2ab201 / #18" framing is precedent-bound and explicit. Maintainer's own `c2ab201` introduced the new single-value legacy site (legacy site #3) — confirms institutional pattern, not one-off. |
+| Scope guard (§7) | **Sound.** Carves out UnmarshalJSON array/object (already strict), Observation.ResultTime, ToTimeRange removal, new API surface (toTimeRangeStrict already exists). Audit confirms only two files + internal adapters touched. |
+| Recommended fix realism | **Sound.** Three guards in one function, no API change, no caller migration. Mirrors neighbouring `ToTimeRangeFromSlice` exactly. Options B/C (structural strict-parse) offered as opt-in PR. |
+| Public extract self-containment | **Sound.** §10 stands alone — `c2ab201` precedent, four-site caller graph, before-state code, sibling correct-guard reference, three-guard diff fix, RFC 7493 + OGC 23-001 + RFC 9110 spec authority, opt-in structural alternative. |
+| Companion-report cross-references | Parent #18 cited; backlog #9 cross-linked. No companion reports. |
+
+### Action items
+- Pre-filing fixes: §2 "lines 129-170" → "129-166"; §6 + §10 "lines 187-201" → "lines 172-194" (×2 occurrences).
+
+### Filed
+- **Upstream issue:** <https://github.com/SomethingCreativeStudios/connected-systems-go/issues/5>
+- **Filed:** 2026-05-05
+
+---

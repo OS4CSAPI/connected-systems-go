@@ -107,7 +107,7 @@ Source: [`../evidence/issue-018/static-analysis-2026-04-30.md`](../evidence/issu
 (refreshed in §1 above).
 
 `internal/model/common_shared/time_range.go` `ToTimeRange`
-(lines 129-170 on `df6da0d`):
+(lines 129-166 on `df6da0d`):
 
 ```go
 func ToTimeRange(timeValue string) TimeRange {
@@ -231,7 +231,7 @@ if t, err := time.Parse(time.RFC3339, parts[0]); err == nil {
 - Behaviour shift: invalid input now produces `nil` pointer rather
   than year-0001 pointer. Aligns with the existing
   `ToTimeRangeFromSlice` shape (which already uses `if … err == nil`
-  guards — see lines 187-201 of the same file).
+  guards — see lines 172-194 of the same file).
 - Downside: still silent — no 400 on the
   `UnmarshalJSON`-string-form path. But this matches the maintainer's
   established convention for `To*` helpers (lossy → strict variant
@@ -293,7 +293,7 @@ already exists — happy to follow up with a PR".
 
 Implementation surface: one function (`ToTimeRange`), three guards.
 Aligns shape with neighbouring `ToTimeRangeFromSlice` which already
-uses this pattern (lines 187-201).
+uses this pattern (lines 172-194).
 
 ## 7. Scope guard
 
@@ -502,3 +502,12 @@ client shape) plus the `history.go` HistoricTime fallback.
 - Evidence (spec): [`docs/research/evidence/issue-018/spec-authority-2026-04-30.md`](../evidence/issue-018/spec-authority-2026-04-30.md)
 - Plan: [`docs/research/upstream-issues/plan-06-totimerange-year-0001-silent-discard.md`](../upstream-issues/plan-06-totimerange-year-0001-silent-discard.md)
 - Backlog: [`docs/research/upstream-followup-backlog.md`](../upstream-followup-backlog.md) #9
+
+---
+
+## 11. Filing record
+
+- Upstream issue: <https://github.com/SomethingCreativeStudios/connected-systems-go/issues/5>
+- Filed: 2026-05-05
+- Filed by: OS4CSAPI fork research stream (via MCP GitHub integration)
+- Audit verdict: pass (see [`../report-audit-log.md`](../report-audit-log.md#report-06-totimerange-year-0001-silent-discard))
