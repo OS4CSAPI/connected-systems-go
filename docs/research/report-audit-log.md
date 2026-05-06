@@ -594,3 +594,29 @@ spatial-discovery view from `application/sml+json` full-metadata view); widening
 the GeoJSON-properties struct would conflate the two encodings against the spec.
 
 **Filed:** none (parked).
+
+
+---
+
+## OS4CSAPI/OSHConnect-Python#5 — silent-sensorml-field-loss filing — 2026-05-05
+
+**Verdict:** `filed-fork-side` (no upstream `connected-systems-go` filing per
+disposition plan).
+
+**Issue:** [`OS4CSAPI/OSHConnect-Python#5`](https://github.com/OS4CSAPI/OSHConnect-Python/issues/5) — `[P1] ensure_procedure and ensure_deployment silently lose all SensorML metadata`
+
+**Authoritative finding:** [`issue-evaluations/silent-sensorml-field-loss-pre-strict-decoder.md`](issue-evaluations/silent-sensorml-field-loss-pre-strict-decoder.md)
+
+**Disposition plan:** [`plan-report-13-disposition.md`](plan-report-13-disposition.md)
+
+**Bug locations cited in filing:**
+- `publishers/bootstrap_helpers.py:246` `ensure_procedure` (single POST, default `application/json`)
+- `publishers/bootstrap_helpers.py:348` `ensure_deployment` (single POST, default `application/json`)
+- Reference for fix pattern: `publishers/bootstrap_helpers.py:272-311` `ensure_system` (POST stub + PUT `application/sml+json` — already spec-correct)
+
+**Audit data shipped with filing:**
+- procedures: 0/12 with metadata (100% loss)
+- deployments: 0/62 with metadata (100% loss)
+- systems: 34/38 keywords, 35/38 identifiers/classifiers/contacts (~89% preserved — confirms `ensure_system` works)
+
+**Status:** filed; advances plan to step E (fix branch).

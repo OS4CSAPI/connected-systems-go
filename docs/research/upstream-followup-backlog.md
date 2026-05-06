@@ -227,6 +227,7 @@ anchors → one-line summary → status.
 - **Source:** Discovery finding 2026-05-05, surfaced during deployment-pinning of `cs-go-upstream` at upstream `df6da0d` and pilot of OSHConnect-Python publisher fleet against the new endpoint. No fork-side issue, no plan-NN.
 - **Category:** ~~Defect (P2 — breaking wire-protocol regression).~~ **Re-categorized:** client-side bug in OSHConnect-Python publishers (latent silent SensorML field loss exposed by upstream `a467aba`'s strict decode). **Upstream `connected-systems-go` is correct; no upstream filing.**
 - **Authoritative finding:** [`issue-evaluations/silent-sensorml-field-loss-pre-strict-decoder.md`](issue-evaluations/silent-sensorml-field-loss-pre-strict-decoder.md)
+- **Filed against fork:** [`OS4CSAPI/OSHConnect-Python#5`](https://github.com/OS4CSAPI/OSHConnect-Python/issues/5) (P1 — `ensure_procedure` / `ensure_deployment` silent SensorML loss)
 - **Disposition plan:** [`plan-report-13-disposition.md`](plan-report-13-disposition.md)
 - **Original (parked) report:** [`upstream-issue-reports/_PARKED_report-13-strict-decoder-osh-publisher-bootstrap-regression.md`](upstream-issue-reports/_PARKED_report-13-strict-decoder-osh-publisher-bootstrap-regression.md) — framing inverted; preserved for forensic value only.
 - **Original recommended fix (rejected):** sync `*GeoJSONProperties` wrapper structs with domain structs. Rejected because the GeoJSON-encoding path is spec-correctly stripped; widening it would conflate `application/geo+json` and `application/sml+json` against CSAPI Part 1.

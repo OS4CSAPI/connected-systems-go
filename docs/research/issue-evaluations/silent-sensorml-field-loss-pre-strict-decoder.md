@@ -3,7 +3,7 @@
 | Field | Value |
 |---|---|
 | Source | Discovery finding 2026-05-05 (deployment-pinning + roundtrip testing) |
-| Fork-side issue | none |
+| Fork-side issue | [`OS4CSAPI/OSHConnect-Python#5`](https://github.com/OS4CSAPI/OSHConnect-Python/issues/5) (filed 2026-05-05) |
 | Upstream-side issue | none — upstream is correct |
 | Verified HEADs | `c9747af` (pre-strict, fork-build `cs-go`) and `df6da0dff8e2d3e76b64b00f856c0d43ed644f6d` (strict, fresh-build `cs-go-upstream`) |
 | **Verdict** | **NOT AN UPSTREAM DEFECT** |
