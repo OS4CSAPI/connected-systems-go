@@ -177,11 +177,9 @@ Direct binding via OGC 23-002 (CSAPI Part 2 schemas) + OGC 23-011r1
 **Out-of-scope sources (not cited):** OAS 3.0.3, JSON Schema 2020-12, RFC 7493.
 
 > **References-list verification.** Plan §7 speculated SWE Common as
-> "OGC 12-000". The curated references list
-> ([`../references.md`](../references.md) line 152) lists the
-> current canonical entry as **OGC 23-011r1** (SWE Common 3.0,
-> 2024). This report cites the canonical entry. No
-> reference-list gap.
+> "OGC 12-000". The current canonical entry is **OGC 23-011r1**
+> (SWE Common 3.0, 2024). This report cites the canonical entry.
+> No reference-list gap.
 
 ## 5. Alternatives considered (internal-only)
 
@@ -305,7 +303,7 @@ What NOT to touch as part of this filing:
 | Severity P2 vs P3? | **P2 retained.** Spec conformance defect; clients declaring constraints get no enforcement; out-of-constraint values silently committed. Direct functional impact on observation correctness. |
 | Live reproducer required? | **No.** Auth-gated; defect is structural (zero `Constraint` references in validator package); static evidence + parent #21's matrix as transitive precedent. |
 | Cite eval/evidence paths? | **Yes**, validation-chain footer. |
-| References-list canonical entry for SWE Common | **OGC 23-011r1** (SWE Common 3.0) — verified at [`../references.md`](../references.md) line 152. Plan §7 speculated "OGC 12-000"; that's outdated. |
+| References-list canonical entry for SWE Common | **OGC 23-011r1** (SWE Common 3.0). Plan §7 speculated "OGC 12-000"; that's outdated. |
 
 ---
 
@@ -492,3 +490,11 @@ the declared datastream schema. Direct functional impact.
 
 **See also:** symmetric filing for `Updatable` is in preparation
 (plan-10 / report-10).
+
+## 11. Filing record
+
+- **Upstream issue:** <https://github.com/SomethingCreativeStudios/connected-systems-go/issues/8>
+- **Filed:** 2026-05-05
+- **Filed by:** orchestrator (via mcp_io_github_git_issue_write)
+- **Audit verdict:** `pass` (after 2 in-place broken-link fixes) — see [report-audit-log.md#report-09-constraint-orphaned-in-validator](../report-audit-log.md#report-09-constraint-orphaned-in-validator)
+

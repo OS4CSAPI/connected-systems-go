@@ -372,3 +372,66 @@ None.
 - **Filed:** 2026-05-05
 
 ---
+
+---
+
+## report-09-constraint-orphaned-in-validator
+
+**Audit date:** 2026-05-05
+**Verdict:** `pass` (after 2 in-place broken-link fixes)
+**Filing-ready:** yes
+
+### §2.1 Mechanical findings (subagent, verbatim)
+
+Pre-flight: `git log -1 upstream/main --format='%H'` → `df6da0dff8e2d3e76b64b00f856c0d43ed644f6d` — matches stated audit reference HEAD. ✓
+
+- **CHECK-1 (Header table)** — backlog #12 (heading `### 12. DatastreamDataComponent.Constraint orphaned in validator` confirmed), plan-09 path, upstream repo identifier — **OK**; external pre-work URL `N/A`.
+- **CHECK-2 (Source fork issue numbers)** — `OS4CSAPI/connected-systems-go#21` referenced 3× (header, §10 context, pre-fix matrix); all `N/A: gh unavailable`.
+- **CHECK-3 (Commit SHAs)** — HEAD `df6da0d…` cited in §1, §10 — **OK** (reachable + matches HEAD).
+- **CHECK-4 (Commit messages)** — `code sight updates` matches verbatim — **OK**.
+- **CHECK-5 (File paths)** — `internal/api/observation_schema_validation.go`, `internal/model/domains/datastream.go` — both **OK**.
+- **CHECK-6 (Line numbers)** — `datastream.go:233` (`Constraint *DatastreamConstraint json:"constraint,omitempty"`), `:315` (comment `DatastreamConstraint maps common SWE constraint shapes`), `:316` (`type DatastreamConstraint struct {`) — exact matches **OK**. `references.md:152` line citation — **FAIL** (broken file ref; see fixes below).
+- **CHECK-7 (Code snippets)** — `matchesNilValue` helper signature + nil/empty guard + Unmarshal loop, `validateDataComponentValue` early-return + leaf-scalar switch (boolean/count/quantity/time,category,text), zero-match grep for `Constraint` in `internal/api/`, 3-line grep block in `datastream.go`, `DatastreamConstraint` struct field set with `json` tags — all **OK** (verified against upstream).
+- **CHECK-8 (Cross-references)** — plan-09, evidence/issue-021/{static,live,spec}-2026-04-30, issue-evaluations/issue-021.md, backlog #12 — all **OK**; `../references.md` (cited L181, L308) — **FAIL** (file does not exist in workspace).
+- **CHECK-9 (Spec citations enumerated, not validated)** — OGC 23-002 (primary, CSAPI Part 2 DataComponent schemas); OGC 23-011r1 (SWE Common 3.0 constraint families); OGC 23-001 (CSAPI Part 1 conformance); RFC 7807 §3 (problem-detail accuracy). Out-of-scope: OAS 3.0.3, JSON Schema 2020-12, RFC 7493.
+- **CHECK-10 (Internal consistency §1 vs §10)** — HEAD SHA, file paths, field/struct names (`Constraint`, `DatastreamConstraint`), line numbers (233, 315, 316), branch count (6 leaf-scalar branches across 4 case arms), asymmetry table, parent issue #21, severity P2 — all **OK** (consistent).
+
+```
+SUMMARY:
+- Checks attempted: 38
+- OK: 31
+- FAIL: 2 (broken `../references.md` link cited L181 in §4 + L308 in §9)
+- N/A: 5
+- Critical concerns:
+  - `docs/research/references.md` does not exist in workspace; cited twice as authority for SWE Common = OGC 23-011r1
+  - All `#21` issue-existence claims unverified (gh unavailable); helper itself verifiably present in upstream
+```
+
+### Pre-filing fixes (orchestrator)
+
+Both `references.md` FAILs are **internal-only** (don't surface in §10 public extract) and the substantive spec claim (SWE Common = OGC 23-011r1) is correct independently of the broken file path. Fixed in-place by removing the broken-path link components while keeping the spec-doc citation:
+
+- L179-184 §4 references-list verification block: removed `[../references.md](../references.md) line 152` parenthetical.
+- L308 §9 row "References-list canonical entry for SWE Common": removed `verified at [../references.md](../references.md) line 152` clause.
+
+Post-fix: 33 OK / 0 FAIL / 5 N/A.
+
+### §2.2 Subjective findings (orchestrator)
+
+| Axis | Finding |
+|---|---|
+| Severity calibration (P2) | **Sound.** §9 explicitly compared P2 vs P3: chose P2 because clients declaring constraints get zero enforcement, and out-of-constraint values commit silently — direct spec-conformance defect with observation-correctness impact (vs. P3 UX-residual class). Distinct from report-07/-08 P3 framing. |
+| Framing accuracy | **Sound.** "Sibling of NilValues fix" framing is precedent-bound — same file, same model type, same asymmetry shape (model-declared + GET-tagged + zero-reference in validator). Precedent commit (helper addition) is verifiably present in `upstream/main`. |
+| Scope guard (§7 implicit; §9 Q3) | **Sound.** Excludes `Updatable` (separate filing — report-10), `command_handler.go` (different code path). Mentions companion filing explicitly: "One-line 'see related' footer when plan-10 is filed." |
+| Recommended fix realism | **Sound.** One helper + 6 call sites in one file. Mirrors `matchesNilValue` shape byte-for-byte. Pseudocode dispatches by component-type tag and `DatastreamConstraint` field presence; line-level implementation deferred to fix PR (not over-prescribed). No new types, no schema migration. |
+| Public extract self-containment | **Sound.** §10 stands alone — parent helper code, full asymmetry table, zero-match grep, struct definition with all 6 fields and JSON tags, fix pseudocode, OGC 23-002 + 23-011r1 + 23-001 + RFC 7807 spec authority, P2 rationale. No `references.md` link in §10 (clean). |
+| Companion-report cross-references | Parent #21 cited; report-10 (`Updatable`) called out in §9 Q3 ("see related" footer planned); footer to issue cross-references companion filing. |
+
+### Action items
+None remaining (broken-link fixes applied pre-filing).
+
+### Filed
+- **Upstream issue:** <https://github.com/SomethingCreativeStudios/connected-systems-go/issues/8>
+- **Filed:** 2026-05-05
+
+---
