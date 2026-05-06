@@ -107,7 +107,7 @@ deserialization path, unaffected by formatter-side enrichment.
 ## 2. Static evidence
 
 Source: [`../evidence/issue-025/static-analysis-2026-04-30.md`](../evidence/issue-025/static-analysis-2026-04-30.md)
-"Affected fields" §, refreshed in §1 above to reflect the
+§"Where inline `@link` is populated", refreshed in §1 above to reflect the
 post-`d2d1347` emission path.
 
 Three independent enrichment gaps, each spec-optional:
@@ -115,14 +115,20 @@ Three independent enrichment gaps, each spec-optional:
 ### 2.1 `Type` — cheap pass, no DB cost
 
 The `Link.Type` field is constant per inline-link property
-(determined by the linked resource type's representation MIME):
+(determined by the linked resource type's representation MIME).
+The inline `@link` inventory carried forward from report-11 §1
+maps to MIME constants as follows (supplementary `links[]` rels
+like `parentSystem` / `subsystems` / `parentDeployment` /
+`subdeployments` / `usedProcedures` are **out of scope** — already
+enriched via `association_links.go`):
 
 | Inline-link property | Linked resource type | Recommended `Type` constant |
 |---|---|---|
-| `system@link`, `subsystems@link`, `deployedSystems@link`, `parentSystem@link`, etc. | System (GeoJSON-default) | `application/geo+json` |
-| `deployment@link`, `parentDeployment@link`, `subdeployments@link` | Deployment (GeoJSON-default) | `application/geo+json` |
-| `featureOfInterest@link`, `samplingFeature@link`, `sampledFeature@link` | SamplingFeature (GeoJSON-default) | `application/geo+json` |
-| `procedure@link`, `systemKind@link`, `usedProcedures@link` | Procedure / SystemKind (SensorML) | `application/sml+json` |
+| `system@link` (DS, CS — synthesized), `deployedSystems@link` (Deployment) | System (GeoJSON-default) | `application/geo+json` |
+| `deployment@link` (DS, CS) | Deployment (GeoJSON-default) | `application/geo+json` |
+| `featureOfInterest@link` (DS, CS), `samplingFeature@link` (DS, CS), `sampledFeature@link` (SamplingFeature) | SamplingFeature (GeoJSON-default) | `application/geo+json` |
+| `platform@link` (Deployment) | System (GeoJSON-default) | `application/geo+json` |
+| `procedure@link` (DS, CS, Command, Observation), `systemKind@link` (System) | Procedure / SystemKind (SensorML) | `application/sml+json` |
 | `result@link` (Observation) | Free-form per `resultEncoding` | omit `Type`, or set per upstream's existing convention |
 
 Constants `GeoJSONContentType` and `SensorMLContentType` are
@@ -172,8 +178,8 @@ since the reorganization moved synthesis from
 handler/repository to formatter without altering the field-set
 populated.
 
-The plan's per-resource-type matrix sketched in §6 follows
-deterministically: 7 resource types × 3 enrichment fields = 21
+The plan's per-resource-type matrix follows deterministically
+from the static evidence: 7 resource types × 3 enrichment fields = 21
 expected-absent cells; T2 (round-trip preservation of
 client-supplied optionals on input) is unaffected and remains
 the regression guard.
@@ -192,7 +198,7 @@ spec-defined optional, so the filing is purely additive.
 | **OpenAPI 3.1 / JSON Schema 2020-12** — optional-field semantics | "OpenAPI Specification 3.1.0" under *API Specification Standards* | Supporting: confirms absent optional fields are spec-conformant — establishes P4 (not P3). |
 
 **Out-of-scope sources (not cited):** IANA Link Relations
-registry (vocabulary-consistency hazard per eval §3); RFC 8288
+registry (vocabulary-consistency hazard per eval Refinement #3); RFC 8288
 (applies to supplementary `links[]`, not inline `@link`).
 
 > **SensorML / `application/sml+json` reference-list verification:**
@@ -418,11 +424,13 @@ out.SystemLink = &common_shared.Link{
 }
 ```
 
-Mapping:
+Mapping (inline `@link` properties only — supplementary `links[]`
+rels like `parentSystem` / `subsystems` are out of scope; already
+enriched via `association_links.go`):
 
 | Inline-link property | Recommended `Type` |
 |---|---|
-| `system@link`, `parentSystem@link`, `subsystems@link`, `deployedSystems@link`, `deployment@link`, `parentDeployment@link`, `subdeployments@link`, `featureOfInterest@link`, `samplingFeature@link`, `sampledFeature@link`, `platform@link` | `application/geo+json` |
+| `system@link`, `deployment@link`, `featureOfInterest@link`, `samplingFeature@link`, `sampledFeature@link`, `platform@link`, `deployedSystems@link` | `application/geo+json` |
 | `procedure@link`, `systemKind@link` | `application/sml+json` |
 | `result@link` (Observation) | omit (MIME varies by `resultEncoding`) |
 
@@ -484,3 +492,16 @@ but loss-of-information for clients.
 - Plan: [`docs/research/upstream-issues/plan-12-inline-link-type-title-uid-enrichment.md`](../upstream-issues/plan-12-inline-link-type-title-uid-enrichment.md)
 - Backlog: [`docs/research/upstream-followup-backlog.md`](../upstream-followup-backlog.md) #16
 - Companion filing (href-correctness axis on same emission sites): [`docs/research/upstream-issue-reports/report-11-inline-link-absolutization-remaining-5.md`](./report-11-inline-link-absolutization-remaining-5.md)
+
+
+---
+
+## 11. Filing record
+
+| Field | Value |
+|---|---|
+| Upstream issue | [`SomethingCreativeStudios/connected-systems-go#11`](https://github.com/SomethingCreativeStudios/connected-systems-go/issues/11) |
+| Issue API id | `4387959978` |
+| Filed | 2026-05-05 |
+| Audit verdict | `pass` — see [`../report-audit-log.md`](../report-audit-log.md#report-12--inline-link-typetitleuid-enrichment--2026-05-05) |
+| Audit reference HEAD | `df6da0dff8e2d3e76b64b00f856c0d43ed644f6d` |

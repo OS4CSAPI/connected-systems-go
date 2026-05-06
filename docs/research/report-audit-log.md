@@ -525,3 +525,33 @@ None remaining (broken-link fixes applied pre-filing; same pattern as report-09)
 - *Cross-references:* Parent fork issue #24 + parent commit d2d1347 cited; companion report-12 referenced for the orthogonal enrichment audit.
 
 **Filed:** [SomethingCreativeStudios/connected-systems-go#10](https://github.com/SomethingCreativeStudios/connected-systems-go/issues/10)
+
+
+---
+
+## report-12 — Inline `@link` Type/Title/UID enrichment — 2026-05-05
+
+**Verdict:** `pass` (after in-place fixes)
+
+**Mechanical 10-check:** 71 attempted / 62 OK / **8 FAIL** / 1 N/A.
+
+**FAILs found and disposition:**
+
+1. **F1 (pre-work URL):** points to `references.md` on `OS4CSAPI/ogc-client-CSAPI_2/blob/phase-8`. **Left as URL** — same disposition as report-11; this is a curated cross-fork pointer distinct from the broken local `../references.md` paths fixed in reports 09/10.
+2. **F2 (§-name):** §2 cited evidence section `"Affected fields"` but actual heading is `"Where inline @link is populated"`. **Fixed in-place** (§2 source line).
+3. **F3 (plan §6 anchor):** "matrix sketched in §6" — plan §6 is `Re-verification commands`, not a matrix. **Fixed in-place:** dropped the §6 anchor; rephrased as "follows deterministically from the static evidence" (arithmetic preserved: 7 × 3 = 21).
+4. **F4 (eval §3 anchor):** "vocabulary-consistency hazard per eval §3" — the hazard actually lives in the eval's `Refinements` section (item 3), not §3 (which is `Where the body is correct`). **Fixed in-place:** "eval §3" → "eval Refinement #3".
+5. **F5 (§2.1 mapping table phantoms):** table listed `subsystems@link`, `parentSystem@link`, `parentDeployment@link`, `subdeployments@link`, `usedProcedures@link` as inline-link properties; `git grep -nE '@link' upstream/main` shows zero matches — these are supplementary `links[]` rels, not inline `@link` JSON tags, and contradict the §1 carry-forward inventory + §7 scope-guard. **Fixed in-place:** pruned to the actual inline-link properties from report-11's audit (system, deployment, featureOfInterest, samplingFeature, sampledFeature, platform, deployedSystems → GeoJSON; procedure, systemKind → SensorML; result → omit). Added explicit "supplementary `links[]` rels are out of scope" parenthetical.
+6. **F6 (§10 public-extract table):** same phantoms in the issue-body extract — highest-impact fix (this is what the maintainer reads). **Fixed in-place** with the same prune.
+7. **F7/F8 (subagent flagged backlog file missing):** false alarm — `docs/research/upstream-followup-backlog.md` exists in workspace. **No fix needed.**
+
+**§2.2 6-axis subjective review:** All 6 axes pass.
+
+- *Severity:* P4 retained. All enriched fields spec-optional per OAS31 312-372; no conformance violation. Sound (UX-class).
+- *Framing:* Two-phase decomposition (Phase 1 const-only, no DB cost; Phase 2 enrichment with N+1 guard) gives the maintainer independent ship-points. Companion filing (#10, href-correctness) cross-referenced.
+- *Scope:* Tight. Excludes supplementary `links[]` (already enriched via `association_links.go`), `Link` struct definition, schema migration, T2 round-trip path. Scope-guard §7 enumerates carve-outs.
+- *Fix shape:* Phase 1 is one-line additions reusing existing `GeoJSONContentType` / `SensorMLContentType` constants. Phase 2 leverages the existing `ResourceCache` precedent (`FetchParentSystems` / `FetchProcedures`). No new infrastructure required.
+- *Public extract:* Self-contained; concrete code-shape example using `datastream_json.go` projection; pruned mapping table; explicit Rel-omission rationale; P4 justification stated.
+- *Cross-references:* Parent fork-side issue #25 + closing commits (`3fa1b0c`, `704a9e3`, `d2d1347`) cited; companion filing #10 cited; report-11 inline-link inventory carried forward.
+
+**Filed:** [`SomethingCreativeStudios/connected-systems-go#11`](https://github.com/SomethingCreativeStudios/connected-systems-go/issues/11)
